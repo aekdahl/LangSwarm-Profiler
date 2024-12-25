@@ -1,3 +1,4 @@
+# db/sqlite_db.py
 import sqlite3
 import json
 from typing import List, Optional
@@ -5,13 +6,16 @@ from .base import DBBase
 
 class SqliteDB(DBBase):
     def __init__(self, db_path: str = "langprofiler.db"):
+        """
+        :param db_path: SQLite file path. Use ':memory:' for in-memory testing.
+        """
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self._create_tables()
 
     def _create_tables(self):
         cur = self.conn.cursor()
 
-        # Agents table
+        # ------- AGENTS -------
         cur.execute("""
             CREATE TABLE IF NOT EXISTS agents (
                 agent_id TEXT PRIMARY KEY,
@@ -19,7 +23,6 @@ class SqliteDB(DBBase):
             )
         """)
 
-        # Interactions table (for agents)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS interactions (
                 interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -33,7 +36,6 @@ class SqliteDB(DBBase):
             )
         """)
 
-        # Profiles table (for agents)
         cur.execute("""
             CREATE TABLE IF NOT EXISTS profiles (
                 agent_id TEXT PRIMARY KEY,
@@ -42,9 +44,7 @@ class SqliteDB(DBBase):
             )
         """)
 
-        # ========== NEW PROMPT TABLES ==========
-
-        # Prompts table
+        # ------- PROMPTS -------
         cur.execute("""
             CREATE TABLE IF NOT EXISTS prompts (
                 prompt_id TEXT PRIMARY KEY,
@@ -52,7 +52,6 @@ class SqliteDB(DBBase):
             )
         """)
 
-        # Prompt Interactions table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS prompt_interactions (
                 prompt_interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,7 +65,6 @@ class SqliteDB(DBBase):
             )
         """)
 
-        # Prompt Profiles table
         cur.execute("""
             CREATE TABLE IF NOT EXISTS prompt_profiles (
                 prompt_id TEXT PRIMARY KEY,
@@ -77,10 +75,9 @@ class SqliteDB(DBBase):
 
         self.conn.commit()
 
-    # -----------------------
-    # Existing AGENT methods
-    # -----------------------
-
+    # =======================
+    #        AGENTS
+    # =======================
     def add_agent(self, agent_id: str, agent_info: dict) -> None:
         cur = self.conn.cursor()
         agent_info_json = json.dumps(agent_info)
@@ -99,6 +96,10 @@ class SqliteDB(DBBase):
         return None
 
     def add_interaction(self, interaction_data: dict) -> None:
+        """
+        interaction_data fields:
+            agent_id, query, response, timestamp, latency, feedback
+        """
         cur = self.conn.cursor()
         cur.execute("""
             INSERT INTO interactions 
@@ -117,12 +118,11 @@ class SqliteDB(DBBase):
     def list_interactions(self, agent_id: str) -> List[dict]:
         cur = self.conn.cursor()
         cur.execute("""
-            SELECT agent_id, query, response, timestamp, latency, feedback 
-            FROM interactions 
+            SELECT agent_id, query, response, timestamp, latency, feedback
+            FROM interactions
             WHERE agent_id = ?
         """, (agent_id,))
         rows = cur.fetchall()
-
         results = []
         for row in rows:
             results.append({
@@ -139,7 +139,7 @@ class SqliteDB(DBBase):
         cur = self.conn.cursor()
         profile_json = json.dumps(profile_vec)
         cur.execute("""
-            INSERT OR REPLACE INTO profiles (agent_id, profile_vec) 
+            INSERT OR REPLACE INTO profiles (agent_id, profile_vec)
             VALUES (?, ?)
         """, (agent_id, profile_json))
         self.conn.commit()
@@ -152,10 +152,9 @@ class SqliteDB(DBBase):
             return json.loads(row[0])
         return None
 
-    # -----------------------
-    # NEW PROMPT METHODS
-    # -----------------------
-
+    # =======================
+    #        PROMPTS
+    # =======================
     def add_prompt(self, prompt_id: str, prompt_info: dict) -> None:
         cur = self.conn.cursor()
         prompt_info_json = json.dumps(prompt_info)
@@ -174,6 +173,10 @@ class SqliteDB(DBBase):
         return None
 
     def add_prompt_interaction(self, interaction_data: dict) -> None:
+        """
+        interaction_data fields:
+            prompt_id, query, response, timestamp, latency, feedback
+        """
         cur = self.conn.cursor()
         cur.execute("""
             INSERT INTO prompt_interactions
