@@ -1,7 +1,45 @@
 # LangProfiler
 
-Below is a draft **introduction** and **detailed description** of **LangProfiler**, along with guidance on **how to use** it. The goal is to help developers (and any interested stakeholders) understand the vision, core functionality, and integration points of this new profiling solution within your emerging ecosystem of AI tools.
+# LangProfiler
 
+A minimal Python library for profiling LLM agents. This is the **first version** demo, providing:
+
+- In-memory database
+- Simple aggregator
+- Basic agent registration and interaction logging
+- Profile embedding generation
+
+## Installation
+
+```bash
+pip install langprofiler
+```
+
+## Usage
+
+```python
+from langprofiler import LangProfiler
+
+lp = LangProfiler()
+agent_id = lp.register_agent(name="Test Agent", cost=0.001)
+lp.log_interaction(agent_id, "Question", "Answer", 0.2, 5.0)
+profile = lp.get_current_profile(agent_id)
+print(profile)
+```
+
+## License
+
+(Include whichever license you choose, for example MIT.)
+
+```plaintext
+MIT License
+
+Copyright (c) 2024 ...
+Permission is hereby granted, free of charge, to any person obtaining a copy...
+```
+
+---
+INFORMATION -- TO BE REMOVED
 ---
 
 # LangProfiler
