@@ -16,7 +16,7 @@ class LangProfiler:
         self.aggregator = SimpleAggregator(embedding_size=embedding_size)
 
     # 1. Register Agent
-    def register_agent(self, name, cost=0.0, domain_tags=None):
+    def register_agent(self, name, cost=0.0, domain_tags=None, **kwargs):
         """
         Registers a new agent with baseline metadata.
         Returns: agent_id (string)
@@ -44,12 +44,12 @@ class LangProfiler:
 
         """
         agent_id = generate_agent_id()
-        agent_obj = Agent(name, cost, domain_tags=domain_tags)
+        agent_obj = Agent(name, cost, domain_tags=domain_tags, **kwargs)
         self.db.add_agent(agent_id, agent_obj)
         return agent_id
 
     # 2. Log Interaction
-    def log_interaction(self, agent_id, user_query, response, latency=0.0, feedback=0.0):
+    def log_interaction(self, agent_id, user_query, response, latency=0.0, feedback=0.0, **kwargs):
         """
         Logs an interaction for the given agent.
 
@@ -65,7 +65,7 @@ class LangProfiler:
         }
 
         """
-        interaction_data = Interaction(agent_id, user_query, response, latency, feedback)
+        interaction_data = Interaction(agent_id, user_query, response, latency, feedback, **kwargs)
         self.db.add_interaction(vars(interaction_data))  # store as a dict
         # After logging, update the agent's profile
         self._update_agent_profile(agent_id)
