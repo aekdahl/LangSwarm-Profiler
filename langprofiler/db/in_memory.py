@@ -4,7 +4,9 @@ For the first version, we'll use an in-memory dict as a placeholder.
 Later, you can swap to a real DB (e.g., SQLite, PostgreSQL).
 """
 
-class InMemoryDB:
+from .base import DBBase
+
+class InMemoryDB(DBBase):
     def __init__(self):
         # Agents, interactions, and profiles stored in dictionaries
         self.agents = {}         # agent_id -> agent_info dict
