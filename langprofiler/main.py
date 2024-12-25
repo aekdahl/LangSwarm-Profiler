@@ -20,6 +20,28 @@ class LangProfiler:
         """
         Registers a new agent with baseline metadata.
         Returns: agent_id (string)
+
+        {
+          "name": "GPT-4 Medical Agent",
+          "description": "Handles medical QA with GPT-4 backend",
+          "agent_version": "v1.2",
+          "cost": 0.002,   # per token
+          "domain_tags": ["medical"],
+          "specialization": "Medical QA Expert",
+          "instructions": "Please provide responses using simple medical terminology, referencing standard clinical guidelines where possible.",
+          "backend_model": "GPT-4",
+          "max_token_limit": 4096,
+          "training_data_cutoff": "2023-01",
+          "latency_bounds": {
+            "avg_expected": 1.0,
+            "max_acceptable": 3.0
+          },
+          "compliance_level": "HIPAA-compliant",
+          "owner": "AI Ops Team",
+          "creation_date": "2024-12-25T12:00:00Z",
+          "tags": ["production", "priority"]
+        }
+
         """
         agent_id = generate_agent_id()
         agent_obj = Agent(name, cost, domain_tags=domain_tags)
