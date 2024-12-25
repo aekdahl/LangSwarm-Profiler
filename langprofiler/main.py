@@ -49,10 +49,21 @@ class LangProfiler:
         return agent_id
 
     # 2. Log Interaction
-    def log_interaction(self, agent_id, user_query, response,
-                        latency=0.0, feedback=0.0):
+    def log_interaction(self, agent_id, user_query, response, latency=0.0, feedback=0.0):
         """
         Logs an interaction for the given agent.
+
+        {
+          "agent_id": "123e4567-e89b-12d3-a456-426614174000",
+          "query": "What is the best medication for a headache?",
+          "response": "I am not a doctor, but typically...",
+          "domain": "medical",
+          "latency": 0.5,
+          "cost": 0.002 * (11 + 25),  // if cost_per_token=0.002
+          "feedback": 4,
+          "timestamp": "2024-12-25T15:30:00Z"
+        }
+
         """
         interaction_data = Interaction(agent_id, user_query, response, latency, feedback)
         self.db.add_interaction(vars(interaction_data))  # store as a dict
