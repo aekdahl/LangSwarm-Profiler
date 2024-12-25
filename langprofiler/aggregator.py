@@ -76,7 +76,8 @@ class HybridAggregatorNN(nn.Module):
         self, 
         model_name: str = "all-MiniLM-L6-v2",
         numeric_dim: int = 0,
-        final_dim: int = 32
+        final_dim: int = 32,
+        do_normalize: bool = True
     ):
         """
         :param model_name: Name of the Sentence-BERT model to load.
@@ -97,6 +98,9 @@ class HybridAggregatorNN(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim, final_dim)
         )
+
+        # 3. Whether to apply L2 normalization
+        self.do_normalize = do_normalize
 
     def forward(self, texts, numeric_features=None):
         """
@@ -133,6 +137,12 @@ class HybridAggregatorNN(nn.Module):
 
         # 4. Pass through NN to get final embedding
         final_embedding = self.reducer(combined)
+
+        # 5. Optional L2 normalization
+        if self.do_normalize:
+            # L2 norm each row
+            final_embedding = F.normalize(final_embedding, p=2, dim=1)
+            
         return final_embedding
 
 
