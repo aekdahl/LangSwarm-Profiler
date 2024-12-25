@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "langprofiler"
+version = "0.1.0"
+description = "A minimal, standalone tool for profiling LLM agents."
+readme = "README.md"
+license = "MIT"
+authors = [
+  { name = "Your Name", email = "you@example.com" }
+]
+keywords = ["AI", "profiling", "LLM", "machine-learning"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.8"
+]
+dependencies = [
+    "numpy>=1.21.0"
+]
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/langprofiler"
+"Source" = "https://github.com/yourusername/langprofiler"
