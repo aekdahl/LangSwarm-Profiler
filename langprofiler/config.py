@@ -21,11 +21,19 @@ class ProfilerConfig:
         # Aggregator settings
         # Model name for Sentence-BERT or any other huggingface-based model
         self.AGGREGATOR_MODEL_NAME = os.getenv("AGGREGATOR_MODEL_NAME", "all-MiniLM-L6-v2")
-        # Final embedding size if we do dimension reduction
-        self.AGGREGATOR_FINAL_DIM = int(os.getenv("AGGREGATOR_FINAL_DIM", "32"))
-
+        
         # Whether to combine numeric features
         self.AGGREGATOR_NUMERIC_DIM = int(os.getenv("AGGREGATOR_NUMERIC_DIM", "0"))
 
+        # Additional features dimensions, defaults to 3.
+        self.AGGREGATOR_ADDITIONAL_FEATURE_DIM = int(os.getenv("AGGREGATOR_ADDITIONAL_FEATURE_DIM", "3"))
+
+        # Final embedding size if we do dimension reduction
+        self.AGGREGATOR_FINAL_DIM = int(os.getenv("AGGREGATOR_FINAL_DIM", "128"))
+        
+
         # Example: A separate "custom_sql" init script or schema path
         self.CUSTOM_SQL_INIT_DDL = os.getenv("CUSTOM_SQL_INIT_DDL", "schema.sql")
+
+        # Feature order configuration
+        self.FEATURE_ORDER = os.getenv("FEATURE_ORDER", "intent,sentiment,topic").split(",")  # Default order
