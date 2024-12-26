@@ -1,10 +1,9 @@
 # feature_extractor.py
 
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline, AutoModelForSequenceClassification
+from transformers import AutoTokenizer, AutoModelForSeq2SeqLM, pipeline
 from bertopic import BERTopic
 import torch
 from typing import List, Optional, Dict
-import json
 
 class FeatureExtractor:
     def __init__(self, device: str = "cpu"):
@@ -41,15 +40,16 @@ class FeatureExtractor:
         """
         extracted = {}
         for feature in feature_types:
-            if feature.lower() == "intent":
+            feature_lower = feature.lower()
+            if feature_lower == "intent":
                 extracted["intent"] = self._extract_intent(text)
-            elif feature.lower() == "topic":
+            elif feature_lower == "topic":
                 extracted["topic"] = self._extract_topic([text])[0]  # BERTopic expects a list
-            elif feature.lower() == "sentiment":
+            elif feature_lower == "sentiment":
                 extracted["sentiment"] = self._extract_sentiment(text)
             else:
                 print(f"Unsupported feature type: {feature}")
-                extracted[feature.lower()] = None
+                extracted[feature_lower] = None
         return extracted
 
     def _extract_intent(self, text: str, max_length: int = 10, num_beams: int = 4) -> str:
