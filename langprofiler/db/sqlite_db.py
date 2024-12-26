@@ -12,17 +12,20 @@ class SqliteDB(DBBase):
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self._create_tables()
 
+    # db/sqlite_db.py (updated schema)
+
     def _create_tables(self):
         cur = self.conn.cursor()
-
+    
         # ------- AGENTS -------
         cur.execute("""
             CREATE TABLE IF NOT EXISTS agents (
                 agent_id TEXT PRIMARY KEY,
-                agent_info TEXT
+                agent_info TEXT,
+                features TEXT  -- JSON-encoded list of features
             )
         """)
-
+    
         cur.execute("""
             CREATE TABLE IF NOT EXISTS interactions (
                 interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -32,10 +35,11 @@ class SqliteDB(DBBase):
                 timestamp REAL,
                 latency REAL,
                 feedback REAL,
+                features TEXT,  -- JSON-encoded dictionary of extracted features
                 FOREIGN KEY(agent_id) REFERENCES agents(agent_id)
             )
         """)
-
+    
         cur.execute("""
             CREATE TABLE IF NOT EXISTS profiles (
                 agent_id TEXT PRIMARY KEY,
@@ -43,15 +47,16 @@ class SqliteDB(DBBase):
                 FOREIGN KEY(agent_id) REFERENCES agents(agent_id)
             )
         """)
-
+    
         # ------- PROMPTS -------
         cur.execute("""
             CREATE TABLE IF NOT EXISTS prompts (
                 prompt_id TEXT PRIMARY KEY,
-                prompt_info TEXT
+                prompt_info TEXT,
+                features TEXT  -- JSON-encoded list of features
             )
         """)
-
+    
         cur.execute("""
             CREATE TABLE IF NOT EXISTS prompt_interactions (
                 prompt_interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -61,10 +66,11 @@ class SqliteDB(DBBase):
                 timestamp REAL,
                 latency REAL,
                 feedback REAL,
+                features TEXT,  -- JSON-encoded dictionary of extracted features
                 FOREIGN KEY(prompt_id) REFERENCES prompts(prompt_id)
             )
         """)
-
+    
         cur.execute("""
             CREATE TABLE IF NOT EXISTS prompt_profiles (
                 prompt_id TEXT PRIMARY KEY,
@@ -72,7 +78,7 @@ class SqliteDB(DBBase):
                 FOREIGN KEY(prompt_id) REFERENCES prompts(prompt_id)
             )
         """)
-
+    
         self.conn.commit()
 
     # =======================
