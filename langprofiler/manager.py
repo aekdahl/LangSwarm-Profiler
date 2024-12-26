@@ -22,7 +22,8 @@ class LangProfiler:
         self.db = self._init_db()
         self.aggregator = self._init_aggregator()
         self.feature_extractor = FeatureExtractor(device=device)
-    
+        self.feature_order = self.config.FEATURE_ORDER  # List[str]
+
     def _init_db(self) -> DBBase:
         backend = self.config.DB_BACKEND
         if backend == "sqlite":
@@ -36,17 +37,17 @@ class LangProfiler:
             )
         else:
             raise ValueError(f"Unknown DB backend: {backend}")
-    
+
     def _init_aggregator(self) -> HybridAggregatorNN:
         aggregator = HybridAggregatorNN(
             model_name=self.config.AGGREGATOR_MODEL_NAME,
             numeric_dim=self.config.AGGREGATOR_NUMERIC_DIM,
-            additional_feature_dim=self.config.AGGREGATOR_ADDITIONAL_FEATURE_DIM,
+            additional_feature_dim=len(self.feature_order),  # Reflect the number of additional features
             final_dim=self.config.AGGREGATOR_FINAL_DIM,
             do_normalize=True
         )
         return aggregator
-    
+
     # -----------------
     # AGENT METHODS
     # -----------------
@@ -61,8 +62,14 @@ class LangProfiler:
         agent_info_json = json.dumps(agent_info)
         features_json = json.dumps(features)
         self.db.add_agent(agent_id, agent_info_json, features_json)
-    
+
     def get_agent_info(self, agent_id: str) -> Optional[dict]:
+        """
+        Retrieves information for the specified agent.
+
+        :param agent_id: Unique identifier for the agent.
+        :return: Dictionary containing agent information and features, or None if not found.
+        """
         agent = self.db.get_agent(agent_id)
         if agent:
             agent_info = json.loads(agent['agent_info'])
@@ -70,7 +77,7 @@ class LangProfiler:
             agent_info['features'] = features
             return agent_info
         return None
-    
+
     def log_interaction(
         self,
         agent_id: str,
@@ -92,19 +99,19 @@ class LangProfiler:
         """
         if timestamp is None:
             timestamp = time.time()
-        
+
         # Retrieve agent's features
         agent = self.db.get_agent(agent_id)
         if not agent:
             raise ValueError(f"Agent '{agent_id}' not found.")
         feature_types = json.loads(agent['features'])
-        
+
         # Extract specified features
         extracted_features = self.feature_extractor.extract_features(query, feature_types)
-        
+
         # Store extracted features as JSON
         features_json = json.dumps(extracted_features)
-        
+
         interaction_data = {
             "agent_id": agent_id,
             "query": query,
@@ -117,7 +124,7 @@ class LangProfiler:
         self.db.add_interaction(interaction_data)
         # Optionally, update profile in real-time:
         self.update_profile(agent_id)
-    
+
     def update_profile(self, agent_id: str):
         """
         Updates the profile vector for the specified agent based on interactions.
@@ -127,16 +134,16 @@ class LangProfiler:
         agent = self.db.get_agent(agent_id)
         if not agent:
             return
-        
+
         agent_info = json.loads(agent['agent_info'])
         instructions_text = agent_info.get("instructions", "")
-        numeric_features = agent_info.get("numeric_features", [])
+        numeric_features = agent_info.get("numeric_features", {})
         feature_types = json.loads(agent['features'])
-        
+
         # Retrieve interactions to extract features
         interactions = self.db.list_interactions(agent_id)
         features = [json.loads(ix['features']) for ix in interactions]
-        
+
         # Aggregate features based on feature types
         aggregated_features = {}
         for feature in feature_types:
@@ -164,21 +171,20 @@ class LangProfiler:
             else:
                 # Handle other feature types as needed
                 aggregated_features[feature_lower] = 0.0  # Default encoding
-        
-        # Prepare additional features list
-        # Ensure the order matches the aggregator's expected input
-        additional_features = [aggregated_features.get(ft.lower(), 0.0) for ft in feature_types]
-        
+
+        # Prepare additional features list based on FEATURE_ORDER from config
+        additional_features = [aggregated_features.get(ft.lower(), 0.0) for ft in self.feature_order]
+
         with torch.no_grad():
             embedding_tensor = self.aggregator(
-                instructions_text, 
-                numeric_features,
+                instructions_text,
+                list(numeric_features.values()),  # Convert dict to list based on predefined order
                 additional_features
             )
             embedding_vec = embedding_tensor[0].tolist()
-        
+
         self.db.update_profile(agent_id, embedding_vec)
-    
+
     def encode_feature(self, feature: str, feature_type: str) -> float:
         """
         Encodes the feature into a numerical value based on feature_type.
@@ -190,36 +196,36 @@ class LangProfiler:
         feature_type = feature_type.lower()
         if feature_type == "intent":
             intent_mapping = {
-                "Financial Planning": 1.0,
-                "Weather Inquiry": 2.0,
-                "Entertainment": 3.0,
-                "Technical Guidance": 4.0,
-                "General Information": 5.0,
-                "Educational Inquiry": 6.0,
-                "Unknown": 0.0
+                "financial planning": 1.0,
+                "weather inquiry": 2.0,
+                "entertainment": 3.0,
+                "technical guidance": 4.0,
+                "general information": 5.0,
+                "educational inquiry": 6.0,
+                "unknown": 0.0
             }
-            return intent_mapping.get(feature, 0.0)
+            return intent_mapping.get(feature.lower(), 0.0)
         elif feature_type == "sentiment":
             sentiment_mapping = {
-                "POSITIVE": 1.0,
-                "NEGATIVE": -1.0,
-                "NEUTRAL": 0.0
+                "positive": 1.0,
+                "negative": -1.0,
+                "neutral": 0.0
             }
-            return sentiment_mapping.get(feature.upper(), 0.0)
+            return sentiment_mapping.get(feature.lower(), 0.0)
         elif feature_type == "topic":
             # For simplicity, assign unique values to topics
             # In a real scenario, you might have a dynamic or more sophisticated mapping
             topic_mapping = {
-                "Machine Learning": 1.0,
-                "Weather": 2.0,
-                "Entertainment": 3.0,
-                "Financial Planning": 4.0,
-                "Unknown": 0.0
+                "machine learning": 1.0,
+                "weather": 2.0,
+                "entertainment": 3.0,
+                "financial planning": 4.0,
+                "unknown": 0.0
             }
-            return topic_mapping.get(feature, 0.0)
+            return topic_mapping.get(feature.lower(), 0.0)
         else:
             return 0.0  # Default encoding for unsupported features
-    
+
     def get_current_profile(self, agent_id: str) -> Optional[List[float]]:
         """
         Retrieves the current profile vector for the specified agent.
@@ -231,7 +237,7 @@ class LangProfiler:
         if profile:
             return json.loads(profile['profile_vec'])
         return None
-    
+
     def list_interactions(self, agent_id: str) -> List[dict]:
         """
         Lists all interactions for the specified agent.
@@ -254,7 +260,7 @@ class LangProfiler:
             }
             for ix in interactions
         ]
-    
+
     # -----------------
     # PROMPT METHODS
     # -----------------
@@ -269,8 +275,14 @@ class LangProfiler:
         prompt_info_json = json.dumps(prompt_info)
         features_json = json.dumps(features)
         self.db.add_prompt(prompt_id, prompt_info_json, features_json)
-    
+
     def get_prompt_info(self, prompt_id: str) -> Optional[dict]:
+        """
+        Retrieves information for the specified prompt.
+
+        :param prompt_id: Unique identifier for the prompt.
+        :return: Dictionary containing prompt information and features, or None if not found.
+        """
         prompt = self.db.get_prompt(prompt_id)
         if prompt:
             prompt_info = json.loads(prompt['prompt_info'])
@@ -278,7 +290,7 @@ class LangProfiler:
             prompt_info['features'] = features
             return prompt_info
         return None
-    
+
     def log_prompt_interaction(
         self,
         prompt_id: str,
@@ -297,19 +309,19 @@ class LangProfiler:
         :param feedback: User feedback score.
         """
         timestamp = time.time()
-        
+
         # Retrieve prompt's features
         prompt = self.db.get_prompt(prompt_id)
         if not prompt:
             raise ValueError(f"Prompt '{prompt_id}' not found.")
         feature_types = json.loads(prompt['features'])
-        
+
         # Extract specified features
         extracted_features = self.feature_extractor.extract_features(query, feature_types)
-        
+
         # Store extracted features as JSON
         features_json = json.dumps(extracted_features)
-        
+
         interaction_data = {
             "prompt_id": prompt_id,
             "query": query,
@@ -322,7 +334,7 @@ class LangProfiler:
         self.db.add_prompt_interaction(interaction_data)
         # Optionally, update profile in real-time:
         self.update_prompt_profile(prompt_id)
-    
+
     def update_prompt_profile(self, prompt_id: str):
         """
         Updates the profile vector for the specified prompt based on interactions.
@@ -332,16 +344,16 @@ class LangProfiler:
         prompt = self.db.get_prompt(prompt_id)
         if not prompt:
             return
-        
+
         prompt_info = json.loads(prompt['prompt_info'])
         instructions_text = prompt_info.get("text", "")
-        numeric_features = prompt_info.get("numeric_features", [])
+        numeric_features = prompt_info.get("numeric_features", {})
         feature_types = json.loads(prompt['features'])
-        
+
         # Retrieve prompt interactions to extract features
         interactions = self.db.list_prompt_interactions(prompt_id)
         features = [json.loads(ix['features']) for ix in interactions]
-        
+
         # Aggregate features based on feature types
         aggregated_features = {}
         for feature in feature_types:
@@ -369,17 +381,51 @@ class LangProfiler:
             else:
                 # Handle other feature types as needed
                 aggregated_features[feature_lower] = 0.0  # Default encoding
-        
-        # Prepare additional features list
-        # Ensure the order matches the aggregator's expected input
-        additional_features = [aggregated_features.get(ft.lower(), 0.0) for ft in feature_types]
-        
+
+        # Prepare additional features list based on FEATURE_ORDER from config
+        additional_features = [aggregated_features.get(ft.lower(), 0.0) for ft in self.feature_order]
+
         with torch.no_grad():
             embedding_tensor = self.aggregator(
-                instructions_text, 
-                numeric_features,
+                instructions_text,
+                list(numeric_features.values()),  # Convert dict to list based on predefined order
                 additional_features
             )
             embedding_vec = embedding_tensor[0].tolist()
-        
-        self.db.update_profile(prompt_id, embedding_vec)
+
+        self.db.update_prompt_profile(prompt_id, embedding_vec)
+
+    def get_prompt_profile(self, prompt_id: str) -> Optional[List[float]]:
+        """
+        Retrieves the current profile vector for the specified prompt.
+
+        :param prompt_id: Unique identifier for the prompt.
+        :return: Profile vector as a list of floats, or None if not found.
+        """
+        profile = self.db.get_prompt_profile(prompt_id)
+        if profile:
+            return json.loads(profile['profile_vec'])
+        return None
+
+    def list_prompt_interactions(self, prompt_id: str) -> List[dict]:
+        """
+        Lists all interactions for the specified prompt.
+
+        :param prompt_id: Unique identifier for the prompt.
+        :return: List of prompt interaction dictionaries.
+        """
+        interactions = self.db.list_prompt_interactions(prompt_id)
+        # Convert JSON strings to dictionaries
+        return [
+            {
+                "prompt_interaction_id": ix['prompt_interaction_id'],
+                "prompt_id": ix['prompt_id'],
+                "query": ix['query'],
+                "response": ix['response'],
+                "timestamp": ix['timestamp'],
+                "latency": ix['latency'],
+                "feedback": ix['feedback'],
+                "features": json.loads(ix['features'])
+            }
+            for ix in interactions
+        ]
