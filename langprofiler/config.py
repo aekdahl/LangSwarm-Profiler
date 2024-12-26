@@ -25,8 +25,8 @@ class ProfilerConfig:
         # Whether to combine numeric features
         self.AGGREGATOR_NUMERIC_DIM = int(os.getenv("AGGREGATOR_NUMERIC_DIM", "0"))
 
-        # Additional features dimensions, defaults to 3.
-        self.AGGREGATOR_ADDITIONAL_FEATURE_DIM = int(os.getenv("AGGREGATOR_ADDITIONAL_FEATURE_DIM", "3"))
+        # Additional features dimensions
+        self.AGGREGATOR_ADDITIONAL_FEATURE_DIM = int(os.getenv("AGGREGATOR_ADDITIONAL_FEATURE_DIM", "15"))
 
         # Final embedding size if we do dimension reduction
         self.AGGREGATOR_FINAL_DIM = int(os.getenv("AGGREGATOR_FINAL_DIM", "128"))
@@ -36,4 +36,4 @@ class ProfilerConfig:
         self.CUSTOM_SQL_INIT_DDL = os.getenv("CUSTOM_SQL_INIT_DDL", "schema.sql")
 
         # Feature order configuration
-        self.FEATURE_ORDER = os.getenv("FEATURE_ORDER", "intent,sentiment,topic").split(",")  # Default order
+        self.FEATURE_ORDER = os.getenv("FEATURE_ORDER", "intent,sentiment,topic,entities,summarization,syntax_complexity,readability_score,tone,formality_level,politeness,contextual_coherence,key_phrase_extraction,temporal_features,speech_acts,intent_confidence_scores").split(",")  
