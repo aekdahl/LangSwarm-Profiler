@@ -13,6 +13,7 @@ from .aggregator import HybridAggregatorNN
 from .config import ProfilerConfig
 from .feature_extractor import FeatureExtractor
 
+
 class LangProfiler:
     """
     High-level manager class that handles Agents and Prompts with dynamic feature extraction.
@@ -148,28 +149,28 @@ class LangProfiler:
         aggregated_features = {}
         for feature in feature_types:
             feature_lower = feature.lower()
-            if feature_lower in ["intent", "topic", "sentiment"]:
-                # Collect all values for the feature
-                feature_values = [ix.get(feature_lower, "Unknown") for ix in features]
-                if feature_lower == "sentiment":
-                    # For sentiment, compute average sentiment score
-                    sentiment_mapping = {
-                        "POSITIVE": 1.0,
-                        "NEGATIVE": -1.0,
-                        "NEUTRAL": 0.0
-                    }
-                    numerical_sentiments = [sentiment_mapping.get(sent, 0.0) for sent in feature_values]
-                    average_sentiment = sum(numerical_sentiments) / len(numerical_sentiments) if numerical_sentiments else 0.0
-                    aggregated_features["sentiment"] = average_sentiment
+            if feature_lower in self.feature_order:
+                feature_values = [ix.get(feature_lower) for ix in features if ix.get(feature_lower) is not None]
+                if not feature_values:
+                    aggregated_features[feature_lower] = 0.0  # Default value if no data
+                    continue
+                first_value = feature_values[0]
+                if isinstance(first_value, (int, float)):
+                    # Average numerical features
+                    aggregated_features[feature_lower] = sum(feature_values) / len(feature_values)
+                elif isinstance(first_value, str):
+                    # Mode for categorical features
+                    aggregated_features[feature_lower] = Counter(feature_values).most_common(1)[0][0]
+                elif isinstance(first_value, bool):
+                    # Majority vote for boolean features
+                    aggregated_features[feature_lower] = int(sum(feature_values) / len(feature_values) > 0.5)
                 else:
-                    # For categorical features like intent and topic, use the most common value
-                    from collections import Counter
-                    counter = Counter(feature_values)
-                    most_common = counter.most_common(1)[0][0]
-                    # Encode the categorical feature
-                    aggregated_features[feature_lower] = self.encode_feature(most_common, feature_type=feature_lower)
+                    # For lists or complex structures, use counts or other aggregations
+                    if isinstance(first_value, list):
+                        aggregated_features[feature_lower] = len(first_value)
+                    else:
+                        aggregated_features[feature_lower] = 0.0
             else:
-                # Handle other feature types as needed
                 aggregated_features[feature_lower] = 0.0  # Default encoding
 
         # Prepare additional features list based on FEATURE_ORDER from config
@@ -213,16 +214,29 @@ class LangProfiler:
             }
             return sentiment_mapping.get(feature.lower(), 0.0)
         elif feature_type == "topic":
-            # For simplicity, assign unique values to topics
-            # In a real scenario, you might have a dynamic or more sophisticated mapping
+            # Example encoding for topic
             topic_mapping = {
                 "machine learning": 1.0,
                 "weather": 2.0,
                 "entertainment": 3.0,
-                "financial planning": 4.0,
+                "finance": 4.0,
                 "unknown": 0.0
             }
             return topic_mapping.get(feature.lower(), 0.0)
+        elif feature_type == "readability_score":
+            # Example encoding for readability_score
+            return float(feature)  # Assuming it's a float already
+        elif feature_type == "key_phrase_extraction":
+            # Example encoding for key phrases
+            # Could be the count of key phrases or another logic
+            return float(len(feature)) if isinstance(feature, list) else 0.0
+        elif feature_type == "temporal_features":
+            # Example encoding for temporal features
+            return float(len(feature)) if isinstance(feature, list) else 0.0
+        elif feature_type == "length_of_prompt":
+            return float(feature)
+        elif feature_type == "conciseness":
+            return float(feature)
         else:
             return 0.0  # Default encoding for unsupported features
 
@@ -358,28 +372,28 @@ class LangProfiler:
         aggregated_features = {}
         for feature in feature_types:
             feature_lower = feature.lower()
-            if feature_lower in ["intent", "topic", "sentiment"]:
-                # Collect all values for the feature
-                feature_values = [ix.get(feature_lower, "Unknown") for ix in features]
-                if feature_lower == "sentiment":
-                    # For sentiment, compute average sentiment score
-                    sentiment_mapping = {
-                        "POSITIVE": 1.0,
-                        "NEGATIVE": -1.0,
-                        "NEUTRAL": 0.0
-                    }
-                    numerical_sentiments = [sentiment_mapping.get(sent, 0.0) for sent in feature_values]
-                    average_sentiment = sum(numerical_sentiments) / len(numerical_sentiments) if numerical_sentiments else 0.0
-                    aggregated_features["sentiment"] = average_sentiment
+            if feature_lower in self.feature_order:
+                feature_values = [ix.get(feature_lower) for ix in features if ix.get(feature_lower) is not None]
+                if not feature_values:
+                    aggregated_features[feature_lower] = 0.0  # Default value if no data
+                    continue
+                first_value = feature_values[0]
+                if isinstance(first_value, (int, float)):
+                    # Average numerical features
+                    aggregated_features[feature_lower] = sum(feature_values) / len(feature_values)
+                elif isinstance(first_value, str):
+                    # Mode for categorical features
+                    aggregated_features[feature_lower] = Counter(feature_values).most_common(1)[0][0]
+                elif isinstance(first_value, bool):
+                    # Majority vote for boolean features
+                    aggregated_features[feature_lower] = int(sum(feature_values) / len(feature_values) > 0.5)
                 else:
-                    # For categorical features like intent and topic, use the most common value
-                    from collections import Counter
-                    counter = Counter(feature_values)
-                    most_common = counter.most_common(1)[0][0]
-                    # Encode the categorical feature
-                    aggregated_features[feature_lower] = self.encode_feature(most_common, feature_type=feature_lower)
+                    # For lists or complex structures, use counts or other aggregations
+                    if isinstance(first_value, list):
+                        aggregated_features[feature_lower] = len(first_value)
+                    else:
+                        aggregated_features[feature_lower] = 0.0
             else:
-                # Handle other feature types as needed
                 aggregated_features[feature_lower] = 0.0  # Default encoding
 
         # Prepare additional features list based on FEATURE_ORDER from config
