@@ -36,4 +36,6 @@ class ProfilerConfig:
         self.CUSTOM_SQL_INIT_DDL = os.getenv("CUSTOM_SQL_INIT_DDL", "schema.sql")
 
         # Feature order configuration
-        self.FEATURE_ORDER = os.getenv("FEATURE_ORDER", "intent,sentiment,topic,entities,summarization,syntax_complexity,readability_score,tone,formality_level,politeness,contextual_coherence,key_phrase_extraction,temporal_features,speech_acts,intent_confidence_scores").split(",")  
+        self.FEATURE_ORDER = os.getenv("FEATURE_ORDER", 
+            "intent,sentiment,topic,entities,summarization,syntax_complexity,readability_score,key_phrase_extraction,temporal_features,length_of_prompt,conciseness"
+        ).split(",")
