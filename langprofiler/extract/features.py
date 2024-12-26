@@ -30,8 +30,8 @@ class FeatureExtractor:
         self.topic_model = BERTopic()
         
         # You can initialize more models here as needed
-    
-    def extract_features(self, text: str, feature_types: List[str]) -> Dict[str, str]:
+
+    def extract_features(self, text: str, feature_types: List[str]) -> Dict[str, Optional[str]]:
         """
         Extracts specified features from the given text.
 
@@ -49,8 +49,9 @@ class FeatureExtractor:
                 extracted["sentiment"] = self._extract_sentiment(text)
             else:
                 print(f"Unsupported feature type: {feature}")
+                extracted[feature.lower()] = None
         return extracted
-    
+
     def _extract_intent(self, text: str, max_length: int = 10, num_beams: int = 4) -> str:
         """
         Extracts intent from the given text using T5.
@@ -71,7 +72,7 @@ class FeatureExtractor:
         )
         intent = self.intent_tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
         return intent
-    
+
     def _extract_topic(self, texts: List[str]) -> List[str]:
         """
         Extracts topics from the given list of texts using BERTopic.
@@ -83,7 +84,7 @@ class FeatureExtractor:
         # Convert numerical topics to readable labels if necessary
         readable_topics = [self.topic_model.get_topic(topic)[0][0] if topic != -1 else "Unknown" for topic in topics]
         return readable_topics
-    
+
     def _extract_sentiment(self, text: str) -> str:
         """
         Analyzes sentiment of the given text.
