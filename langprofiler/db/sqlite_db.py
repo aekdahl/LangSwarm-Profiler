@@ -2,6 +2,7 @@
 
 import sqlite3
 from .base import DBBase
+import json
 
 class SqliteDB(DBBase):
     def __init__(self, db_path: str):
@@ -67,7 +68,7 @@ class SqliteDB(DBBase):
             );
         """)
         
-        # Create profiles table (assuming profiles are stored separately)
+        # Create profiles table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS profiles (
                 profile_id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -77,6 +78,7 @@ class SqliteDB(DBBase):
             );
         """)
         
+        # Create prompt_profiles table
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS prompt_profiles (
                 profile_id INTEGER PRIMARY KEY AUTOINCREMENT,
