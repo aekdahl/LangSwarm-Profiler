@@ -12,8 +12,6 @@ class SqliteDB(DBBase):
         self.conn = sqlite3.connect(db_path, check_same_thread=False)
         self._create_tables()
 
-    # db/sqlite_db.py (updated schema)
-
     def _create_tables(self):
         cur = self.conn.cursor()
     
@@ -22,7 +20,7 @@ class SqliteDB(DBBase):
             CREATE TABLE IF NOT EXISTS agents (
                 agent_id TEXT PRIMARY KEY,
                 agent_info TEXT,
-                features TEXT  -- JSON-encoded list of features
+                features TEXT  -- JSON-encoded dictionary of features
             )
         """)
     
@@ -53,7 +51,7 @@ class SqliteDB(DBBase):
             CREATE TABLE IF NOT EXISTS prompts (
                 prompt_id TEXT PRIMARY KEY,
                 prompt_info TEXT,
-                features TEXT  -- JSON-encoded list of features
+                features TEXT  -- JSON-encoded dictionary of features
             )
         """)
     
