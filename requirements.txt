@@ -1,0 +1,14 @@
+torch==0.0.1
+sentence-transformers==0.0.1
+numpy==0.0.1
+spacy==0.0.1
+transformers==0.0.1
+textblob==0.0.1
+textstat==0.0.1
+rake-nltk==0.0.1
+requests==0.0.1
+packaging==0.0.1
+sqlite3==0.0.1
+psycopg2==0.0.1
+mysql-connector-python==0.0.1
+chromadb==0.0.1
