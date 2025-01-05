@@ -1,3 +1,4 @@
+from typing import List
 import psycopg2
 from .base import DBBase
 import json
