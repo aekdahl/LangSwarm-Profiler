@@ -1,0 +1,2681 @@
+# Total Document Length: 101328 characters
+
+
+--------------------------------------------------------------------------------
+File: collect_scripts.py
+--------------------------------------------------------------------------------
+
+import os
+
+# Function to write all files into a single output file
+def collect_scripts(start_folder="START_FOLDER", output_file="collected_scripts.txt", include_root_files=False):
+    # Determine the repository root and the start path
+    repo_root = os.getenv("GITHUB_WORKSPACE", os.getcwd())
+    start_path = os.path.join(repo_root, start_folder)
+
+    if not os.path.exists(start_path):
+        print(f"Error: The folder '{start_folder}' does not exist.")
+        return
+
+    total_length = 0  # Variable to track the total length of the document
+
+    with open(output_file, "w", encoding="utf-8") as outfile:
+        # Include files from the root folder of the repository if the flag is set
+        if include_root_files:
+            for file in os.listdir(repo_root):
+                file_path = os.path.join(repo_root, file)
+                if os.path.isfile(file_path) and not file.startswith("."):  # Exclude hidden files
+                    try:
+                        # Write the relative file name and path as a header
+                        relative_path = os.path.relpath(file_path, repo_root)
+                        outfile.write(f"\n{'-'*80}\n")
+                        outfile.write(f"File: {relative_path}\n")
+                        outfile.write(f"{'-'*80}\n\n")
+
+                        # Read the file content and write it
+                        with open(file_path, "r", encoding="utf-8") as infile:
+                            content = infile.read()
+                            total_length += len(content)
+                            outfile.write(content)
+                            outfile.write("\n\n")
+                    except Exception as e:
+                        # Log files that couldn't be read
+                        error_message = f"[ERROR READING FILE: {file} - {e}]\n\n"
+                        total_length += len(error_message)
+                        outfile.write(error_message)
+
+        # Walk through the specified folder and its subfolders
+        for root, _, files in os.walk(start_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                relative_path = os.path.relpath(file_path, start_path)
+
+                try:
+                    # Write the relative file name and path as a header
+                    outfile.write(f"\n{'-'*80}\n")
+                    outfile.write(f"File: {relative_path}\n")
+                    outfile.write(f"{'-'*80}\n\n")
+
+                    # Read the file content and write it
+                    with open(file_path, "r", encoding="utf-8") as infile:
+                        content = infile.read()
+                        total_length += len(content)
+                        outfile.write(content)
+                        outfile.write("\n\n")
+                except Exception as e:
+                    # Log files that couldn't be read
+                    error_message = f"[ERROR READING FILE: {relative_path} - {e}]\n\n"
+                    total_length += len(error_message)
+                    outfile.write(error_message)
+
+    # Prepend the total document length to the file
+    prepend_length_comment(output_file, total_length)
+
+
+def prepend_length_comment(output_file, total_length):
+    """
+    Prepend a comment with the total document length to the output file.
+    """
+    with open(output_file, "r+", encoding="utf-8") as f:
+        content = f.read()
+        f.seek(0, 0)  # Move to the start of the file
+        f.write(f"# Total Document Length: {total_length} characters\n\n")
+        f.write(content)
+
+
+if __name__ == "__main__":
+    output_filename = "collected_scripts.txt"
+    start_folder = "langswarm"  # Specify the start folder (e.g., "/" for the root of the repository)
+    include_root = True  # Set this flag to True to include files in the repository root folder
+    print(f"Collecting scripts from '{start_folder}' into {output_filename}...")
+    collect_scripts(start_folder=start_folder, output_file=output_filename, include_root_files=include_root)
+    print(f"All scripts have been collected into {output_filename}.")
+
+
+
+--------------------------------------------------------------------------------
+File: README.md
+--------------------------------------------------------------------------------
+
+# LangProfiler
+
+# LangProfiler
+
+A minimal Python library for profiling LLM agents. This is the **first version** demo, providing:
+
+- In-memory database
+- Simple aggregator
+- Basic agent registration and interaction logging
+- Profile embedding generation
+
+## Installation
+
+```bash
+pip install langprofiler
+```
+
+## Usage
+
+```python
+from langprofiler import LangProfiler
+
+lp = LangProfiler()
+agent_id = lp.register_agent(name="Test Agent", cost=0.001)
+lp.log_interaction(agent_id, "Question", "Answer", 0.2, 5.0)
+profile = lp.get_current_profile(agent_id)
+print(profile)
+```
+
+## License
+
+(Include whichever license you choose, for example MIT.)
+
+```plaintext
+MIT License
+
+Copyright (c) 2024 ...
+Permission is hereby granted, free of charge, to any person obtaining a copy...
+```
+
+---
+INFORMATION -- TO BE REMOVED
+---
+
+# LangProfiler
+
+## Introduction
+
+Modern AI systems often rely on multiple Large Language Models (LLMs), each with distinct capabilities and behaviors. Some excel at creative generation, others at factual correctness, and still others at specialized domains such as finance or medicine. To make informed decisions about which model (or agent) to use for a given task, developers need clear insights into each model’s strengths and weaknesses. 
+
+**LangProfiler** is a **standalone profiling tool** that addresses this need. By collecting and analyzing performance data from various LLMs or LLM “agents” (where each agent could have its own specialized instructions and configurations), LangProfiler outputs easy-to-use profiles. These profiles capture essential metrics—like accuracy, cost efficiency, domain coverage, and more—and turn them into a standardized representation.
+
+With LangProfiler, developers can:
+
+1. **Identify the best LLM or agent** for a given use case.  
+2. **Track improvements or regressions** in LLM performance over time.  
+3. **Quickly integrate with other modules** (e.g., multi-agent frameworks, memory solutions, and workflow orchestrators) to build robust, intelligent systems.
+
+LangProfiler is designed to fit seamlessly into the broader ecosystem that includes:
+- **LangSwarm** – multi-agent solution for consensus, aggregation, voting, etc.  
+- **MemSwarm** – centralized and cross-agent memory solution.  
+- **LangRL** – a reinforcement learning orchestration layer for workflows and agent selection.  
+
+In short, LangProfiler is the “eyes and ears” for your AI architecture: it quantifies the performance of each agent and shares that knowledge so other modules can make better decisions.
+
+---
+
+## Detailed Description
+
+### 1. Core Concept
+
+LangProfiler manages and maintains **profiling data** for each LLM or agent. An “agent” could be:
+
+- **A distinct LLM** (e.g., GPT-4, Claude, Llama 2).  
+- **A specialized persona or instruction set** within the same LLM (e.g., “Medical Agent,” “Creative Agent,” “Financial Agent”).
+
+Each agent’s **profile** is stored as a **fixed-size vector** (or embedding) plus supplemental metadata. This vector encodes various attributes such as:
+
+- **Cost**: estimated or actual cost per token or per request.  
+- **Latency**: average response time.  
+- **Domain Expertise**: medical, legal, creative writing, coding, etc. (often captured via multi-hot or numeric fields).  
+- **Empirical Performance Metrics**: accuracy on test sets, user satisfaction ratings, or specialized scores (BLEU, ROUGE, etc.).  
+- **Other Attributes**: training data cutoff, maximum context window, versions, etc.
+
+### 2. Data Pipeline
+
+1. **Data Ingestion**: As agents handle tasks, you log relevant details (domain, user feedback, performance outcomes).  
+2. **Aggregator/Encoder**: LangProfiler uses a small neural network (or other aggregator) to translate these raw inputs into a consistent, fixed-size embedding.  
+3. **Storage & Versioning**: Profiles are updated incrementally whenever new performance data is available. Older versions are retained or aggregated for historical analysis.  
+4. **Querying**: External modules (e.g., LangSwarm, LangRL) can query LangProfiler to get the **most recent** or **historically best** profile of an agent.
+
+### 3. Integration with the Ecosystem
+
+- **LangSwarm**: When multiple agents propose different solutions, LangSwarm can reference LangProfiler’s data to weigh each agent’s trustworthiness or domain expertise during voting or consensus processes.  
+- **MemSwarm**: The memory system can store and retrieve references to agent profiles, ensuring consistent knowledge sharing across the entire multi-agent setup.  
+- **LangRL**: During workflow orchestration or agent selection, LangRL uses LangProfiler’s embeddings to pick the most suitable agent(s). This might include balancing **accuracy vs. cost**, or selecting agents that excel in the relevant domain.
+
+---
+
+## How to Use LangProfiler
+
+Below is a **step-by-step** guide for developers who want to incorporate LangProfiler into their workflows.
+
+### Step 1. **Install & Configure LangProfiler**
+1. **Obtain the LangProfiler Package**: Install it in your environment (e.g., via pip or a local library).  
+2. **Set Up a Database or Storage Layer**: LangProfiler needs somewhere to record profile data (SQL database, NoSQL, or an in-memory store).  
+3. **Initialize the Profiler**: Provide initial configuration (feature definitions, aggregator/encoder model settings, default domain categories, etc.).
+
+### Step 2. **Register Agents**
+1. **Create Agent Entries**: For each LLM or agent persona, register it with LangProfiler.  
+2. **Assign Basic Features**: Cost, domain flags, token limits, etc. This forms your **manual baseline** before you gather empirical data.  
+3. **Get Agent IDs**: LangProfiler will generate unique identifiers for each agent, enabling consistent tracking.
+
+### Step 3. **Log Interactions & Performance Data**
+1. **Integration Hooks**: Add code hooks in your application so that **each request** and **its outcome** are logged back to LangProfiler.  
+2. **Metrics & Feedback**: Supply numeric scores (accuracy on a known test set) or user feedback (ratings, thumbs-up/down) to help refine agent profiles.  
+3. **Automatic Encoding**: LangProfiler’s aggregator updates each agent’s embedded profile vector in response to new data.
+
+### Step 4. **Query & Retrieve Profiles**
+1. **Direct API Calls**: Modules like LangRL or LangSwarm can request the current profile for “Agent X.”  
+2. **Similarity Search**: If you have a specific “query embedding” or a set of required attributes, you can let LangProfiler **rank** which agent(s) best match your need.  
+3. **Version Control**: Retrieve historical profiles if you need to audit or analyze performance over time.
+
+### Step 5. **Refine & Iterate**
+1. **Add More Features**: Over time, you may decide to track additional metrics. Update your aggregator network and re-run profiling.  
+2. **Continuous Improvement**: As new data streams in, the aggregator can become more accurate at representing agent capabilities.  
+3. **Collaborate & Share**: If multiple teams use LangProfiler, consider sharing profile data and best practices for aggregator tuning.
+
+---
+
+## Example Use Case
+
+1. A developer wants to build a **medical Q&A system**.  
+2. They create two specialized “Doctor Agents” (both powered by GPT-4) but with different instruction prompts and knowledge resources.  
+3. They **register** each agent in LangProfiler, providing initial tags like `["medical"]` and cost info.  
+4. They run test queries from a medical QA dataset, logging success/failure rates.  
+5. LangProfiler **updates** each agent’s embedded profile to reflect how they performed.  
+6. When a user asks a new medical question, the **LangRL** system retrieves profile embeddings, compares them to the user’s query requirements, and selects the best “Doctor Agent.”
+
+---
+
+## Conclusion
+
+LangProfiler is poised to become the **foundation** of your AI ecosystem’s intelligence, powering data-driven decisions about which LLM or agent is best for each job. By tracking both **manual** and **empirical** features, it provides a **scalable** and **evolvable** solution that keeps pace with the fast-moving world of large language models.
+
+- **Build Confidence**: See objective metrics on agent performance and specialization.  
+- **Optimize Costs**: Choose more cost-effective agents when high-end capability isn’t necessary.  
+- **Enhance Collaboration**: Support multi-agent systems like LangSwarm, shared memory systems like MemSwarm, and RL-driven orchestrators like LangRL.
+
+**LangProfiler**—profile your agents with clarity, evolve your AI systems with confidence, and keep your entire language ecosystem aligned around the best possible performance.
+
+
+
+--------------------------------------------------------------------------------
+File: collected_scripts.txt
+--------------------------------------------------------------------------------
+
+
+--------------------------------------------------------------------------------
+File: collect_scripts.py
+--------------------------------------------------------------------------------
+
+import os
+
+# Function to write all files into a single output file
+def collect_scripts(start_folder="START_FOLDER", output_file="collected_scripts.txt", include_root_files=False):
+    # Determine the repository root and the start path
+    repo_root = os.getenv("GITHUB_WORKSPACE", os.getcwd())
+    start_path = os.path.join(repo_root, start_folder)
+
+    if not os.path.exists(start_path):
+        print(f"Error: The folder '{start_folder}' does not exist.")
+        return
+
+    total_length = 0  # Variable to track the total length of the document
+
+    with open(output_file, "w", encoding="utf-8") as outfile:
+        # Include files from the root folder of the repository if the flag is set
+        if include_root_files:
+            for file in os.listdir(repo_root):
+                file_path = os.path.join(repo_root, file)
+                if os.path.isfile(file_path) and not file.startswith("."):  # Exclude hidden files
+                    try:
+                        # Write the relative file name and path as a header
+                        relative_path = os.path.relpath(file_path, repo_root)
+                        outfile.write(f"\n{'-'*80}\n")
+                        outfile.write(f"File: {relative_path}\n")
+                        outfile.write(f"{'-'*80}\n\n")
+
+                        # Read the file content and write it
+                        with open(file_path, "r", encoding="utf-8") as infile:
+                            content = infile.read()
+                            total_length += len(content)
+                            outfile.write(content)
+                            outfile.write("\n\n")
+                    except Exception as e:
+                        # Log files that couldn't be read
+                        error_message = f"[ERROR READING FILE: {file} - {e}]\n\n"
+                        total_length += len(error_message)
+                        outfile.write(error_message)
+
+        # Walk through the specified folder and its subfolders
+        for root, _, files in os.walk(start_path):
+            for file in files:
+                file_path = os.path.join(root, file)
+                relative_path = os.path.relpath(file_path, start_path)
+
+                try:
+                    # Write the relative file name and path as a header
+                    outfile.write(f"\n{'-'*80}\n")
+                    outfile.write(f"File: {relative_path}\n")
+                    outfile.write(f"{'-'*80}\n\n")
+
+                    # Read the file content and write it
+                    with open(file_path, "r", encoding="utf-8") as infile:
+                        content = infile.read()
+                        total_length += len(content)
+                        outfile.write(content)
+                        outfile.write("\n\n")
+                except Exception as e:
+                    # Log files that couldn't be read
+                    error_message = f"[ERROR READING FILE: {relative_path} - {e}]\n\n"
+                    total_length += len(error_message)
+                    outfile.write(error_message)
+
+    # Prepend the total document length to the file
+    prepend_length_comment(output_file, total_length)
+
+
+def prepend_length_comment(output_file, total_length):
+    """
+    Prepend a comment with the total document length to the output file.
+    """
+    with open(output_file, "r+", encoding="utf-8") as f:
+        content = f.read()
+        f.seek(0, 0)  # Move to the start of the file
+        f.write(f"# Total Document Length: {total_length} characters\n\n")
+        f.write(content)
+
+
+if __name__ == "__main__":
+    output_filename = "collected_scripts.txt"
+    start_folder = "langswarm"  # Specify the start folder (e.g., "/" for the root of the repository)
+    include_root = True  # Set this flag to True to include files in the repository root folder
+    print(f"Collecting scripts from '{start_folder}' into {output_filename}...")
+    collect_scripts(start_folder=start_folder, output_file=output_filename, include_root_files=include_root)
+    print(f"All scripts have been collected into {output_filename}.")
+
+
+
+--------------------------------------------------------------------------------
+File: README.md
+--------------------------------------------------------------------------------
+
+# LangProfiler
+
+# LangProfiler
+
+A minimal Python library for profiling LLM agents. This is the **first version** demo, providing:
+
+- In-memory database
+- Simple aggregator
+- Basic agent registration and interaction logging
+- Profile embedding generation
+
+## Installation
+
+```bash
+pip install langprofiler
+```
+
+## Usage
+
+```python
+from langprofiler import LangProfiler
+
+lp = LangProfiler()
+agent_id = lp.register_agent(name="Test Agent", cost=0.001)
+lp.log_interaction(agent_id, "Question", "Answer", 0.2, 5.0)
+profile = lp.get_current_profile(agent_id)
+print(profile)
+```
+
+## License
+
+(Include whichever license you choose, for example MIT.)
+
+```plaintext
+MIT License
+
+Copyright (c) 2024 ...
+Permission is hereby granted, free of charge, to any person obtaining a copy...
+```
+
+---
+INFORMATION -- TO BE REMOVED
+---
+
+# LangProfiler
+
+## Introduction
+
+Modern AI systems often rely on multiple Large Language Models (LLMs), each with distinct capabilities and behaviors. Some excel at creative generation, others at factual correctness, and still others at specialized domains such as finance or medicine. To make informed decisions about which model (or agent) to use for a given task, developers need clear insights into each model’s strengths and weaknesses. 
+
+**LangProfiler** is a **standalone profiling tool** that addresses this need. By collecting and analyzing performance data from various LLMs or LLM “agents” (where each agent could have its own specialized instructions and configurations), LangProfiler outputs easy-to-use profiles. These profiles capture essential metrics—like accuracy, cost efficiency, domain coverage, and more—and turn them into a standardized representation.
+
+With LangProfiler, developers can:
+
+1. **Identify the best LLM or agent** for a given use case.  
+2. **Track improvements or regressions** in LLM performance over time.  
+3. **Quickly integrate with other modules** (e.g., multi-agent frameworks, memory solutions, and workflow orchestrators) to build robust, intelligent systems.
+
+LangProfiler is designed to fit seamlessly into the broader ecosystem that includes:
+- **LangSwarm** – multi-agent solution for consensus, aggregation, voting, etc.  
+- **MemSwarm** – centralized and cross-agent memory solution.  
+- **LangRL** – a reinforcement learning orchestration layer for workflows and agent selection.  
+
+In short, LangProfiler is the “eyes and ears” for your AI architecture: it quantifies the performance of each agent and shares that knowledge so other modules can make better decisions.
+
+---
+
+## Detailed Description
+
+### 1. Core Concept
+
+LangProfiler manages and maintains **profiling data** for each LLM or agent. An “agent” could be:
+
+- **A distinct LLM** (e.g., GPT-4, Claude, Llama 2).  
+- **A specialized persona or instruction set** within the same LLM (e.g., “Medical Agent,” “Creative Agent,” “Financial Agent”).
+
+Each agent’s **profile** is stored as a **fixed-size vector** (or embedding) plus supplemental metadata. This vector encodes various attributes such as:
+
+- **Cost**: estimated or actual cost per token or per request.  
+- **Latency**: average response time.  
+- **Domain Expertise**: medical, legal, creative writing, coding, etc. (often captured via multi-hot or numeric fields).  
+- **Empirical Performance Metrics**: accuracy on test sets, user satisfaction ratings, or specialized scores (BLEU, ROUGE, etc.).  
+- **Other Attributes**: training data cutoff, maximum context window, versions, etc.
+
+### 2. Data Pipeline
+
+1. **Data Ingestion**: As agents handle tasks, you log relevant details (domain, user feedback, performance outcomes).  
+2. **Aggregator/Encoder**: LangProfiler uses a small neural network (or other aggregator) to translate these raw inputs into a consistent, fixed-size embedding.  
+3. **Storage & Versioning**: Profiles are updated incrementally whenever new performance data is available. Older versions are retained or aggregated for historical analysis.  
+4. **Querying**: External modules (e.g., LangSwarm, LangRL) can query LangProfiler to get the **most recent** or **historically best** profile of an agent.
+
+### 3. Integration with the Ecosystem
+
+- **LangSwarm**: When multiple agents propose different solutions, LangSwarm can reference LangProfiler’s data to weigh each agent’s trustworthiness or domain expertise during voting or consensus processes.  
+- **MemSwarm**: The memory system can store and retrieve references to agent profiles, ensuring consistent knowledge sharing across the entire multi-agent setup.  
+- **LangRL**: During workflow orchestration or agent selection, LangRL uses LangProfiler’s embeddings to pick the most suitable agent(s). This might include balancing **accuracy vs. cost**, or selecting agents that excel in the relevant domain.
+
+---
+
+## How to Use LangProfiler
+
+Below is a **step-by-step** guide for developers who want to incorporate LangProfiler into their workflows.
+
+### Step 1. **Install & Configure LangProfiler**
+1. **Obtain the LangProfiler Package**: Install it in your environment (e.g., via pip or a local library).  
+2. **Set Up a Database or Storage Layer**: LangProfiler needs somewhere to record profile data (SQL database, NoSQL, or an in-memory store).  
+3. **Initialize the Profiler**: Provide initial configuration (feature definitions, aggregator/encoder model settings, default domain categories, etc.).
+
+### Step 2. **Register Agents**
+1. **Create Agent Entries**: For each LLM or agent persona, register it with LangProfiler.  
+2. **Assign Basic Features**: Cost, domain flags, token limits, etc. This forms your **manual baseline** before you gather empirical data.  
+3. **Get Agent IDs**: LangProfiler will generate unique identifiers for each agent, enabling consistent tracking.
+
+### Step 3. **Log Interactions & Performance Data**
+1. **Integration Hooks**: Add code hooks in your application so that **each request** and **its outcome** are logged back to LangProfiler.  
+2. **Metrics & Feedback**: Supply numeric scores (accuracy on a known test set) or user feedback (ratings, thumbs-up/down) to help refine agent profiles.  
+3. **Automatic Encoding**: LangProfiler’s aggregator updates each agent’s embedded profile vector in response to new data.
+
+### Step 4. **Query & Retrieve Profiles**
+1. **Direct API Calls**: Modules like LangRL or LangSwarm can request the current profile for “Agent X.”  
+2. **Similarity Search**: If you have a specific “query embedding” or a set of required attributes, you can let LangProfiler **rank** which agent(s) best match your need.  
+3. **Version Control**: Retrieve historical profiles if you need to audit or analyze performance over time.
+
+### Step 5. **Refine & Iterate**
+1. **Add More Features**: Over time, you may decide to track additional metrics. Update your aggregator network and re-run profiling.  
+2. **Continuous Improvement**: As new data streams in, the aggregator can become more accurate at representing agent capabilities.  
+3. **Collaborate & Share**: If multiple teams use LangProfiler, consider sharing profile data and best practices for aggregator tuning.
+
+---
+
+## Example Use Case
+
+1. A developer wants to build a **medical Q&A system**.  
+2. They create two specialized “Doctor Agents” (both powered by GPT-4) but with different instruction prompts and knowledge resources.  
+3. They **register** each agent in LangProfiler, providing initial tags like `["medical"]` and cost info.  
+4. They run test queries from a medical QA dataset, logging success/failure rates.  
+5. LangProfiler **updates** each agent’s embedded profile to reflect how they performed.  
+6. When a user asks a new medical question, the **LangRL** system retrieves profile embeddings, compares them to the user’s query requirements, and selects the best “Doctor Agent.”
+
+---
+
+## Conclusion
+
+LangProfiler is poised to become the **foundation** of your AI ecosystem’s intelligence, powering data-driven decisions about which LLM or agent is best for each job. By tracking both **manual** and **empirical** features, it provides a **scalable** and **evolvable** solution that keeps pace with the fast-moving world of large language models.
+
+- **Build Confidence**: See objective metrics on agent performance and specialization.  
+- **Optimize Costs**: Choose more cost-effective agents when high-end capability isn’t necessary.  
+- **Enhance Collaboration**: Support multi-agent systems like LangSwarm, shared memory systems like MemSwarm, and RL-driven orchestrators like LangRL.
+
+**LangProfiler**—profile your agents with clarity, evolve your AI systems with confidence, and keep your entire language ecosystem aligned around the best possible performance.
+
+
+
+--------------------------------------------------------------------------------
+File: setup.cfg
+--------------------------------------------------------------------------------
+
+[metadata]
+description-file = README.md
+
+[options]
+packages = find:
+python_requires = >=3.8
+
+[options.extras_require]
+dev =
+    pytest
+    black
+    flake8
+
+
+
+--------------------------------------------------------------------------------
+File: pyproject.toml
+--------------------------------------------------------------------------------
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+
+
+--------------------------------------------------------------------------------
+File: MANIFEST.in
+--------------------------------------------------------------------------------
+
+include README.md
+include LICENSE
+include requirements.txt
+recursive-include core *
+recursive-exclude __pycache__ *
+recursive-exclude *.pyc
+
+
+
+--------------------------------------------------------------------------------
+File: LICENSE
+--------------------------------------------------------------------------------
+
+MIT License
+
+Copyright (c) 2025 Alexander Ekdahl
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software...
+
+
+
+--------------------------------------------------------------------------------
+File: setup.py
+--------------------------------------------------------------------------------
+
+from setuptools import setup, find_packages, find_namespace_packages
+
+# Read dependencies from requirements.txt
+with open("requirements.txt", "r") as f:
+    requirements = f.read().splitlines()
+    
+setup(
+    name="langswarm-profiler",
+    version="0.0.1",
+    description="...",
+    long_description=open("README.md").read(),
+    long_description_content_type="text/markdown",
+    url="https://github.com/aekdahl/langswarm-profiler",
+    author="Alexander Ekdahl",
+    author_email="alexander.ekdahl@gmail.com",
+    license="MIT",
+    classifiers=[
+        "Development Status :: 3 - Alpha",
+        "Intended Audience :: Developers",
+        "License :: OSI Approved :: MIT License",
+        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
+        "Programming Language :: Python :: 3.10",
+        "Programming Language :: Python :: 3.11",
+    ],
+    packages=find_namespace_packages(include=["langswarm.*"]),
+    python_requires=">=3.8",
+    install_requires=requirements,
+    extras_require={
+        "dev": ["pytest", "black", "flake8"],
+    },
+    include_package_data=True,
+    entry_points={
+        "console_scripts": [
+            # If your package includes CLI tools, specify them here.
+            # e.g., "langswarm=core.cli:main",
+        ],
+    },
+)
+
+
+
+--------------------------------------------------------------------------------
+File: dependency_update_test.py
+--------------------------------------------------------------------------------
+
+import subprocess
+import requests
+import sys
+from packaging.version import Version
+
+
+def fetch_versions(package_name):
+    """
+    Fetch all available versions of a package from PyPI.
+    """
+    url = f"https://pypi.org/pypi/{package_name}/json"
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        all_versions = list(response.json()["releases"].keys())
+        # Sort versions using `packaging.version.Version`
+        all_versions.sort(key=Version)
+        return all_versions
+    except requests.RequestException as e:
+        print(f"Error fetching versions for {package_name}: {e}")
+        return []
+
+
+def test_dependency_version(package, version):
+    """
+    Test if a specific version of a package can be installed.
+    """
+    try:
+        print(f"Testing {package}=={version}...")
+        subprocess.run(
+            [sys.executable, "-m", "pip", "install", f"{package}=={version}"],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        print(f"{package}=={version} installed successfully!")
+        return True
+    except subprocess.CalledProcessError:
+        print(f"{package}=={version} failed.")
+        return False
+
+
+def find_oldest_compatible_version(package, versions):
+    """
+    Find the oldest compatible version of a package by testing all versions.
+    """
+    compatible_version = None
+    for version in reversed(versions):  # Test oldest versions first
+        if test_dependency_version(package, version):
+            compatible_version = version
+            break
+    return compatible_version
+
+
+def get_supported_python_versions():
+    """
+    Extract the list of supported Python versions from the requirements.txt file.
+    """
+    supported_versions = []
+    try:
+        with open("requirements.txt", "r") as f:
+            for line in f:
+                if line.startswith("# Supported versions of Python:"):
+                    supported_versions = line.strip().split(":")[1].strip().split(", ")
+                    break
+    except FileNotFoundError:
+        pass
+    return supported_versions
+
+
+def update_requirements_with_python_versions(dependency_versions, python_version, success):
+    """
+    Update the requirements.txt file with the latest compatible versions
+    and maintain only supported Python versions.
+    """
+    # Get existing supported versions
+    supported_versions = set(get_supported_python_versions())
+
+    if success:
+        supported_versions.add(python_version)  # Add the Python version if it succeeded
+    else:
+        supported_versions.discard(python_version)  # Remove the version if it failed
+
+    # Sort for consistency
+    supported_versions = sorted(supported_versions)
+
+    with open("requirements.txt", "w") as f:
+        # Add the comment about supported Python versions
+        f.write(f"# Supported versions of Python: {', '.join(supported_versions)}\n")
+        f.write("# Automatically updated by dependency_update_test.py\n\n")
+
+        # Write the compatible dependency versions
+        for package, compatible_version in dependency_versions.items():
+            f.write(f"{package}=={compatible_version}\n")
+    print("requirements.txt updated successfully with Python version support comment.")
+
+
+def main(python_version):
+    # Read dependencies from requirements.txt
+    try:
+        with open("requirements.txt", "r") as f:
+            dependencies = [line.strip().split("==")[0] for line in f if "==" in line]
+    except FileNotFoundError:
+        print("requirements.txt not found.")
+        sys.exit(1)
+
+    latest_versions = {}
+    success = True  # Track whether all tests passed
+    for package in dependencies:
+        print(f"\nFetching versions for {package}...")
+        versions = fetch_versions(package)
+        if not versions:
+            print(f"No versions found for {package}. Skipping...")
+            continue
+
+        print(f"Available versions for {package}: {versions}")
+        compatible_version = find_oldest_compatible_version(package, versions)
+        if compatible_version:
+            print(f"Oldest compatible version for {package}: {compatible_version}")
+            latest_versions[package] = compatible_version
+        else:
+            print(f"No compatible version found for {package} on Python {python_version}.")
+            success = False
+            break  # Exit the loop and mark the test as failed
+
+    # Update requirements.txt with compatible versions and supported Python versions
+    update_requirements_with_python_versions(latest_versions, python_version, success)
+
+    if not success:
+        sys.exit(1)  # Exit with failure if any dependency test failed
+
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python dependency_update_test.py <python_version>")
+        sys.exit(1)
+    main(sys.argv[1])
+
+
+
+--------------------------------------------------------------------------------
+File: __init__.py
+--------------------------------------------------------------------------------
+
+
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/aggregator.py
+--------------------------------------------------------------------------------
+
+"""
+Simple aggregator/encoder for converting metrics into an embedding.
+"""
+
+import numpy as np
+
+try:
+    from sklearn.decomposition import PCA
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    PCA = None
+    SentenceTransformer = None
+
+try:
+    import torch
+    import torch.nn as nn
+    from sentence_transformers import SentenceTransformer
+except ImportError:
+    nn = None
+    SentenceTransformer = None
+
+if nn is None and SentenceTransformer is None and PCA is None:
+    raise ImportError(
+        "Either scikit-learn or PyTorch and sentence-transformers must be installed.\n"
+        "Please install them using one of the following commands:\n\n"
+        "  pip install torch sentence-transformers\n\n"
+        "Or, if you rather use PCA:\n"
+        "  pip install scikit-learn sentence-transformers\n\n"
+    )
+
+
+class SimpleAggregator:
+    def __init__(self, embedding_size=8):
+        """
+        Initialize a basic aggregator that produces an N-dimensional embedding.
+        """
+        self.embedding_size = embedding_size
+
+    def aggregate(self, agent_data):
+        """
+        agent_data: dictionary containing aggregated metrics about an agent.
+                    Example: {"avg_latency": 0.123, "avg_cost": 0.001, "avg_feedback": 4.5}
+
+        returns: A numpy array of shape (embedding_size,)
+        """
+        # For a super-simple approach, just transform metrics into a fixed-size vector.
+        # We'll "fake" it here by hashing or normalizing values. Expand as needed.
+
+        # Example: Convert numeric values to a vector, then pad/truncate to embedding_size.
+        metrics_vec = []
+
+        for key, value in sorted(agent_data.items()):
+            # Just a placeholder approach: convert the float to a scaled number
+            metrics_vec.append(float(value))
+
+        # Convert list to numpy array, pad or trim to embedding_size
+        arr = np.array(metrics_vec, dtype=np.float32)
+        if len(arr) < self.embedding_size:
+            padding = np.zeros(self.embedding_size - len(arr), dtype=np.float32)
+            arr = np.concatenate([arr, padding])
+        else:
+            arr = arr[:self.embedding_size]
+
+        return arr
+
+
+class HybridAggregatorNN(nn.Module):
+    """
+    A hybrid aggregator that:
+      1) Encodes text with Sentence-BERT,
+      2) Optionally incorporates numeric features,
+      3) Projects everything down to a smaller final embedding via an NN.
+    """
+
+    def __init__(
+        self, 
+        model_name: str = "all-MiniLM-L6-v2",
+        numeric_dim: int = 0,
+        final_dim: int = 32,
+        do_normalize: bool = True
+    ):
+        """
+        :param model_name: Name of the Sentence-BERT model to load.
+        :param numeric_dim: How many numeric features we expect to concatenate.
+        :param final_dim: Size of the output embedding.
+        """
+        super().__init__()
+        # 1. Sentence-BERT model for text
+        self.sbert_model = SentenceTransformer(model_name)
+        self.sbert_dim = self.sbert_model.get_sentence_embedding_dimension()
+
+        # 2. Feed-forward layers to reduce dimension
+        combined_input_dim = self.sbert_dim + numeric_dim
+        hidden_dim = max(final_dim * 2, 64)  # or whatever heuristic you like
+
+        self.reducer = nn.Sequential(
+            nn.Linear(combined_input_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, final_dim)
+        )
+
+        # 3. Whether to apply L2 normalization
+        self.do_normalize = do_normalize
+
+    def forward(self, texts, numeric_features=None):
+        """
+        :param texts: A single string or a list of strings (instructions).
+        :param numeric_features: 
+            - None (if no numeric features), or 
+            - a list of float lists, shape [batch_size, numeric_dim].
+        :return: A (batch_size x final_dim) tensor.
+        """
+        # 1. Encode text via Sentence-BERT
+        # If it's a single string, wrap in a list for consistency
+        if isinstance(texts, str):
+            texts = [texts]
+        text_embeddings = self.sbert_model.encode(
+            texts, 
+            convert_to_tensor=True  # returns a PyTorch tensor
+        )  # shape: (batch_size, sbert_dim)
+
+        batch_size = text_embeddings.size(0)
+        
+        # 2. Prepare numeric features
+        if numeric_features is None:
+            # If no numeric features, just pass a zero tensor
+            numeric_dim = 0
+            numeric_tensor = torch.zeros(batch_size, 0)
+        else:
+            numeric_tensor = torch.tensor(numeric_features, dtype=torch.float32)
+            if len(numeric_tensor.shape) == 1:
+                # if user passed a single row, shape (numeric_dim,)
+                numeric_tensor = numeric_tensor.unsqueeze(0)  # shape: (1, numeric_dim)
+
+        # 3. Concatenate text embedding + numeric
+        combined = torch.cat([text_embeddings, numeric_tensor], dim=1)
+
+        # 4. Pass through NN to get final embedding
+        final_embedding = self.reducer(combined)
+
+        # 5. Optional L2 normalization
+        if self.do_normalize:
+            # L2 norm each row
+            final_embedding = F.normalize(final_embedding, p=2, dim=1)
+            
+        return final_embedding
+
+
+class SentenceBERTWithPCA:
+    """
+    Uses Sentence-BERT to get embeddings, then applies PCA for dimension reduction.
+    Optionally merges numeric features after PCA or before PCA.
+    """
+
+    def __init__(
+        self, 
+        model_name: str = "all-MiniLM-L6-v2",
+        pca_dim: int = 32,
+        combine_numeric: bool = False
+    ):
+        """
+        :param model_name: Name of the Sentence-BERT model to load.
+        :param pca_dim: Target dimension after PCA.
+        :param combine_numeric: If True, merges numeric features into the embeddings 
+                                before PCA (requires fitting PCA to combined data).
+                                Otherwise, you can merge after PCA or skip numeric features.
+        """
+        self.sbert_model = SentenceTransformer(model_name)
+        self.sbert_dim = self.sbert_model.get_sentence_embedding_dimension()
+        self.pca_dim = pca_dim
+        self.combine_numeric = combine_numeric
+
+        # Initialize PCA object (not yet fitted)
+        self.pca = PCA(n_components=self.pca_dim)
+        self.is_fitted = False
+
+    def fit(self, text_samples, numeric_features=None):
+        """
+        Fit PCA on a sample dataset. 
+        This should be done on a representative set of instructions (and numeric features if combine_numeric=True).
+        """
+        # Encode text via SBERT
+        if isinstance(text_samples, str):
+            text_samples = [text_samples]
+
+        text_embeddings = self.sbert_model.encode(text_samples, convert_to_numpy=True)
+
+        if self.combine_numeric and numeric_features is not None:
+            numeric_array = np.array(numeric_features, dtype=np.float32)
+            if len(numeric_array.shape) == 1:
+                numeric_array = numeric_array.reshape(1, -1)
+            combined_embeddings = np.concatenate([text_embeddings, numeric_array], axis=1)
+        else:
+            combined_embeddings = text_embeddings
+
+        self.pca.fit(combined_embeddings)
+        self.is_fitted = True
+
+    def transform(self, text_samples, numeric_features=None):
+        """
+        Transforms new data to PCA-reduced embeddings.
+        """
+        if not self.is_fitted:
+            raise ValueError("PCA is not yet fitted. Call `fit` first with sample data.")
+        
+        if isinstance(text_samples, str):
+            text_samples = [text_samples]
+
+        text_embeddings = self.sbert_model.encode(text_samples, convert_to_numpy=True)
+
+        # Merge numeric if combine_numeric=True
+        if self.combine_numeric and numeric_features is not None:
+            numeric_array = np.array(numeric_features, dtype=np.float32)
+            if len(numeric_array.shape) == 1:
+                numeric_array = numeric_array.reshape(1, -1)
+            combined_embeddings = np.concatenate([text_embeddings, numeric_array], axis=1)
+        else:
+            combined_embeddings = text_embeddings
+
+        reduced_embeddings = self.pca.transform(combined_embeddings)
+        return reduced_embeddings
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/__init__.py
+--------------------------------------------------------------------------------
+
+
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/manager.py
+--------------------------------------------------------------------------------
+
+# manager.py
+
+import time
+from typing import Optional, List, Dict
+import torch
+import json
+
+from .db.base import DBBase
+from .db.sqlite_db import SqliteDB
+from .db.chroma_db import ChromaDB
+from .db.custom_sql import CustomSQLConnector
+from .aggregator import HybridAggregatorNN
+from .config import ProfilerConfig
+from .feature_extractor import FeatureExtractor
+
+
+class LangProfiler:
+    """
+    High-level manager class that handles Agents and Prompts with dynamic feature extraction.
+    """
+    def __init__(self, config: Optional[ProfilerConfig] = None, device: str = "cpu"):
+        self.config = config or ProfilerConfig()
+        self.db = self._init_db()
+        self.aggregator = self._init_aggregator()
+        self.feature_extractor = FeatureExtractor(device=device)
+        self.feature_order = self.config.FEATURE_ORDER  # List[str]
+
+    def _init_db(self) -> DBBase:
+        backend = self.config.DB_BACKEND
+        if backend == "sqlite":
+            return SqliteDB(db_path=self.config.DB_DSN)
+        elif backend == "chroma":
+            return ChromaDB(persist_directory=self.config.CHROMA_PERSIST_DIR)
+        elif backend == "custom_sql":
+            return CustomSQLConnector(
+                dsn=self.config.DB_DSN,
+                init_ddl=self.config.CUSTOM_SQL_INIT_DDL
+            )
+        else:
+            raise ValueError(f"Unknown DB backend: {backend}")
+
+    def _init_aggregator(self) -> HybridAggregatorNN:
+        aggregator = HybridAggregatorNN(
+            model_name=self.config.AGGREGATOR_MODEL_NAME,
+            numeric_dim=self.config.AGGREGATOR_NUMERIC_DIM,
+            additional_feature_dim=len(self.feature_order),  # Reflect the number of additional features
+            final_dim=self.config.AGGREGATOR_FINAL_DIM,
+            do_normalize=True
+        )
+        return aggregator
+
+    # -----------------
+    # AGENT METHODS
+    # -----------------
+    def register_agent(self, agent_id: str, agent_info: dict, features: List[str]):
+        """
+        Registers a new agent with specified features.
+
+        :param agent_id: Unique identifier for the agent.
+        :param agent_info: Dictionary containing agent information.
+        :param features: List of feature types to extract (e.g., ["intent", "sentiment"]).
+        """
+        agent_info_json = json.dumps(agent_info)
+        features_json = json.dumps(features)
+        self.db.add_agent(agent_id, agent_info_json, features_json)
+
+    def get_agent_info(self, agent_id: str) -> Optional[dict]:
+        """
+        Retrieves information for the specified agent.
+
+        :param agent_id: Unique identifier for the agent.
+        :return: Dictionary containing agent information and features, or None if not found.
+        """
+        agent = self.db.get_agent(agent_id)
+        if agent:
+            agent_info = json.loads(agent['agent_info'])
+            features = json.loads(agent['features'])
+            agent_info['features'] = features
+            return agent_info
+        return None
+
+    def log_interaction(
+        self,
+        agent_id: str,
+        query: str,
+        response: str,
+        latency: float = 0.0,
+        feedback: float = 0.0,
+        timestamp: float = None
+    ):
+        """
+        Logs an interaction for the specified agent.
+
+        :param agent_id: Unique identifier for the agent.
+        :param query: The user's query.
+        :param response: The agent's response.
+        :param latency: Response latency.
+        :param feedback: User feedback score.
+        :param timestamp: Timestamp of the interaction.
+        """
+        if timestamp is None:
+            timestamp = time.time()
+
+        # Retrieve agent's features
+        agent = self.db.get_agent(agent_id)
+        if not agent:
+            raise ValueError(f"Agent '{agent_id}' not found.")
+        feature_types = json.loads(agent['features'])
+
+        # Extract specified features
+        extracted_features = self.feature_extractor.extract_features(query, feature_types)
+
+        # Store extracted features as JSON
+        features_json = json.dumps(extracted_features)
+
+        interaction_data = {
+            "agent_id": agent_id,
+            "query": query,
+            "response": response,
+            "timestamp": timestamp,
+            "latency": latency,
+            "feedback": feedback,
+            "features": features_json
+        }
+        self.db.add_interaction(interaction_data)
+        # Optionally, update profile in real-time:
+        self.update_profile(agent_id)
+
+    def update_profile(self, agent_id: str):
+        """
+        Updates the profile vector for the specified agent based on interactions.
+
+        :param agent_id: Unique identifier for the agent.
+        """
+        agent = self.db.get_agent(agent_id)
+        if not agent:
+            return
+
+        agent_info = json.loads(agent['agent_info'])
+        instructions_text = agent_info.get("instructions", "")
+        numeric_features = agent_info.get("numeric_features", {})
+        feature_types = json.loads(agent['features'])
+
+        # Retrieve interactions to extract features
+        interactions = self.db.list_interactions(agent_id)
+        features = [json.loads(ix['features']) for ix in interactions]
+
+        # Aggregate features based on feature types
+        aggregated_features = {}
+        for feature in feature_types:
+            feature_lower = feature.lower()
+            if feature_lower in self.feature_order:
+                feature_values = [ix.get(feature_lower) for ix in features if ix.get(feature_lower) is not None]
+                if not feature_values:
+                    aggregated_features[feature_lower] = 0.0  # Default value if no data
+                    continue
+                first_value = feature_values[0]
+                if isinstance(first_value, (int, float)):
+                    # Average numerical features
+                    aggregated_features[feature_lower] = sum(feature_values) / len(feature_values)
+                elif isinstance(first_value, str):
+                    # Mode for categorical features
+                    aggregated_features[feature_lower] = Counter(feature_values).most_common(1)[0][0]
+                elif isinstance(first_value, bool):
+                    # Majority vote for boolean features
+                    aggregated_features[feature_lower] = int(sum(feature_values) / len(feature_values) > 0.5)
+                else:
+                    # For lists or complex structures, use counts or other aggregations
+                    if isinstance(first_value, list):
+                        aggregated_features[feature_lower] = len(first_value)
+                    else:
+                        aggregated_features[feature_lower] = 0.0
+            else:
+                aggregated_features[feature_lower] = 0.0  # Default encoding
+
+        # Prepare additional features list based on FEATURE_ORDER from config
+        additional_features = [aggregated_features.get(ft.lower(), 0.0) for ft in self.feature_order]
+
+        with torch.no_grad():
+            embedding_tensor = self.aggregator(
+                instructions_text,
+                list(numeric_features.values()),  # Convert dict to list based on predefined order
+                additional_features
+            )
+            embedding_vec = embedding_tensor[0].tolist()
+
+        self.db.update_profile(agent_id, embedding_vec)
+
+    def encode_feature(self, feature: str, feature_type: str) -> float:
+        """
+        Encodes the feature into a numerical value based on feature_type.
+
+        :param feature: The feature string (e.g., intent label).
+        :param feature_type: The type of feature (e.g., 'intent', 'topic').
+        :return: Encoded numerical value.
+        """
+        feature_type = feature_type.lower()
+        if feature_type == "intent":
+            intent_mapping = {
+                "financial planning": 1.0,
+                "weather inquiry": 2.0,
+                "entertainment": 3.0,
+                "technical guidance": 4.0,
+                "general information": 5.0,
+                "educational inquiry": 6.0,
+                "unknown": 0.0
+            }
+            return intent_mapping.get(feature.lower(), 0.0)
+        elif feature_type == "sentiment":
+            sentiment_mapping = {
+                "positive": 1.0,
+                "negative": -1.0,
+                "neutral": 0.0
+            }
+            return sentiment_mapping.get(feature.lower(), 0.0)
+        elif feature_type == "topic":
+            # Example encoding for topic
+            topic_mapping = {
+                "machine learning": 1.0,
+                "weather": 2.0,
+                "entertainment": 3.0,
+                "finance": 4.0,
+                "unknown": 0.0
+            }
+            return topic_mapping.get(feature.lower(), 0.0)
+        elif feature_type == "readability_score":
+            # Example encoding for readability_score
+            return float(feature)  # Assuming it's a float already
+        elif feature_type == "key_phrase_extraction":
+            # Example encoding for key phrases
+            # Could be the count of key phrases or another logic
+            return float(len(feature)) if isinstance(feature, list) else 0.0
+        elif feature_type == "temporal_features":
+            # Example encoding for temporal features
+            return float(len(feature)) if isinstance(feature, list) else 0.0
+        elif feature_type == "length_of_prompt":
+            return float(feature)
+        elif feature_type == "conciseness":
+            return float(feature)
+        else:
+            return 0.0  # Default encoding for unsupported features
+
+    def get_current_profile(self, agent_id: str) -> Optional[List[float]]:
+        """
+        Retrieves the current profile vector for the specified agent.
+
+        :param agent_id: Unique identifier for the agent.
+        :return: Profile vector as a list of floats, or None if not found.
+        """
+        profile = self.db.get_profile(agent_id)
+        if profile:
+            return json.loads(profile['profile_vec'])
+        return None
+
+    def list_interactions(self, agent_id: str) -> List[dict]:
+        """
+        Lists all interactions for the specified agent.
+
+        :param agent_id: Unique identifier for the agent.
+        :return: List of interaction dictionaries.
+        """
+        interactions = self.db.list_interactions(agent_id)
+        # Convert JSON strings to dictionaries
+        return [
+            {
+                "interaction_id": ix['interaction_id'],
+                "agent_id": ix['agent_id'],
+                "query": ix['query'],
+                "response": ix['response'],
+                "timestamp": ix['timestamp'],
+                "latency": ix['latency'],
+                "feedback": ix['feedback'],
+                "features": json.loads(ix['features'])
+            }
+            for ix in interactions
+        ]
+
+    # -----------------
+    # PROMPT METHODS
+    # -----------------
+    def register_prompt(self, prompt_id: str, prompt_info: dict, features: List[str]):
+        """
+        Registers a new prompt with specified features.
+
+        :param prompt_id: Unique identifier for the prompt.
+        :param prompt_info: Dictionary containing prompt information.
+        :param features: List of feature types to extract (e.g., ["topic", "sentiment"]).
+        """
+        prompt_info_json = json.dumps(prompt_info)
+        features_json = json.dumps(features)
+        self.db.add_prompt(prompt_id, prompt_info_json, features_json)
+
+    def get_prompt_info(self, prompt_id: str) -> Optional[dict]:
+        """
+        Retrieves information for the specified prompt.
+
+        :param prompt_id: Unique identifier for the prompt.
+        :return: Dictionary containing prompt information and features, or None if not found.
+        """
+        prompt = self.db.get_prompt(prompt_id)
+        if prompt:
+            prompt_info = json.loads(prompt['prompt_info'])
+            features = json.loads(prompt['features'])
+            prompt_info['features'] = features
+            return prompt_info
+        return None
+
+    def log_prompt_interaction(
+        self,
+        prompt_id: str,
+        query: str,
+        response: str,
+        latency: float = 0.0,
+        feedback: float = 0.0
+    ):
+        """
+        Logs an interaction for the specified prompt.
+
+        :param prompt_id: Unique identifier for the prompt.
+        :param query: The user's query.
+        :param response: The prompt's response.
+        :param latency: Response latency.
+        :param feedback: User feedback score.
+        """
+        timestamp = time.time()
+
+        # Retrieve prompt's features
+        prompt = self.db.get_prompt(prompt_id)
+        if not prompt:
+            raise ValueError(f"Prompt '{prompt_id}' not found.")
+        feature_types = json.loads(prompt['features'])
+
+        # Extract specified features
+        extracted_features = self.feature_extractor.extract_features(query, feature_types)
+
+        # Store extracted features as JSON
+        features_json = json.dumps(extracted_features)
+
+        interaction_data = {
+            "prompt_id": prompt_id,
+            "query": query,
+            "response": response,
+            "timestamp": timestamp,
+            "latency": latency,
+            "feedback": feedback,
+            "features": features_json
+        }
+        self.db.add_prompt_interaction(interaction_data)
+        # Optionally, update profile in real-time:
+        self.update_prompt_profile(prompt_id)
+
+    def update_prompt_profile(self, prompt_id: str):
+        """
+        Updates the profile vector for the specified prompt based on interactions.
+
+        :param prompt_id: Unique identifier for the prompt.
+        """
+        prompt = self.db.get_prompt(prompt_id)
+        if not prompt:
+            return
+
+        prompt_info = json.loads(prompt['prompt_info'])
+        instructions_text = prompt_info.get("text", "")
+        numeric_features = prompt_info.get("numeric_features", {})
+        feature_types = json.loads(prompt['features'])
+
+        # Retrieve prompt interactions to extract features
+        interactions = self.db.list_prompt_interactions(prompt_id)
+        features = [json.loads(ix['features']) for ix in interactions]
+
+        # Aggregate features based on feature types
+        aggregated_features = {}
+        for feature in feature_types:
+            feature_lower = feature.lower()
+            if feature_lower in self.feature_order:
+                feature_values = [ix.get(feature_lower) for ix in features if ix.get(feature_lower) is not None]
+                if not feature_values:
+                    aggregated_features[feature_lower] = 0.0  # Default value if no data
+                    continue
+                first_value = feature_values[0]
+                if isinstance(first_value, (int, float)):
+                    # Average numerical features
+                    aggregated_features[feature_lower] = sum(feature_values) / len(feature_values)
+                elif isinstance(first_value, str):
+                    # Mode for categorical features
+                    aggregated_features[feature_lower] = Counter(feature_values).most_common(1)[0][0]
+                elif isinstance(first_value, bool):
+                    # Majority vote for boolean features
+                    aggregated_features[feature_lower] = int(sum(feature_values) / len(feature_values) > 0.5)
+                else:
+                    # For lists or complex structures, use counts or other aggregations
+                    if isinstance(first_value, list):
+                        aggregated_features[feature_lower] = len(first_value)
+                    else:
+                        aggregated_features[feature_lower] = 0.0
+            else:
+                aggregated_features[feature_lower] = 0.0  # Default encoding
+
+        # Prepare additional features list based on FEATURE_ORDER from config
+        additional_features = [aggregated_features.get(ft.lower(), 0.0) for ft in self.feature_order]
+
+        with torch.no_grad():
+            embedding_tensor = self.aggregator(
+                instructions_text,
+                list(numeric_features.values()),  # Convert dict to list based on predefined order
+                additional_features
+            )
+            embedding_vec = embedding_tensor[0].tolist()
+
+        self.db.update_prompt_profile(prompt_id, embedding_vec)
+
+    def get_prompt_profile(self, prompt_id: str) -> Optional[List[float]]:
+        """
+        Retrieves the current profile vector for the specified prompt.
+
+        :param prompt_id: Unique identifier for the prompt.
+        :return: Profile vector as a list of floats, or None if not found.
+        """
+        profile = self.db.get_prompt_profile(prompt_id)
+        if profile:
+            return json.loads(profile['profile_vec'])
+        return None
+
+    def list_prompt_interactions(self, prompt_id: str) -> List[dict]:
+        """
+        Lists all interactions for the specified prompt.
+
+        :param prompt_id: Unique identifier for the prompt.
+        :return: List of prompt interaction dictionaries.
+        """
+        interactions = self.db.list_prompt_interactions(prompt_id)
+        # Convert JSON strings to dictionaries
+        return [
+            {
+                "prompt_interaction_id": ix['prompt_interaction_id'],
+                "prompt_id": ix['prompt_id'],
+                "query": ix['query'],
+                "response": ix['response'],
+                "timestamp": ix['timestamp'],
+                "latency": ix['latency'],
+                "feedback": ix['feedback'],
+                "features": json.loads(ix['features'])
+            }
+            for ix in interactions
+        ]
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/config.py
+--------------------------------------------------------------------------------
+
+# config.py
+import os
+
+class ProfilerConfig:
+    """
+    Simple configuration class for the profiler.
+    In a larger system, you might load from a .env or .yaml file, or parse CLI args.
+    """
+
+    def __init__(self):
+        # Database backend: 'sqlite', 'chroma', 'custom_sql', etc.
+        self.DB_BACKEND = os.getenv("PROFILER_DB_BACKEND", "sqlite")
+        
+        # Path or DSN for the database
+        # e.g. "langprofiler.db" for SQLite, or "postgres://user:pass@localhost:5432/langprof" for custom SQL
+        self.DB_DSN = os.getenv("PROFILER_DB_DSN", "langprofiler.db")
+
+        # If using ChromaDB
+        self.CHROMA_PERSIST_DIR = os.getenv("CHROMA_PERSIST_DIR", "./chroma_db")
+
+        # Aggregator settings
+        # Model name for Sentence-BERT or any other huggingface-based model
+        self.AGGREGATOR_MODEL_NAME = os.getenv("AGGREGATOR_MODEL_NAME", "all-MiniLM-L6-v2")
+        
+        # Whether to combine numeric features
+        self.AGGREGATOR_NUMERIC_DIM = int(os.getenv("AGGREGATOR_NUMERIC_DIM", "0"))
+
+        # Additional features dimensions
+        self.AGGREGATOR_ADDITIONAL_FEATURE_DIM = int(os.getenv("AGGREGATOR_ADDITIONAL_FEATURE_DIM", "15"))
+
+        # Final embedding size if we do dimension reduction
+        self.AGGREGATOR_FINAL_DIM = int(os.getenv("AGGREGATOR_FINAL_DIM", "128"))
+        
+
+        # Example: A separate "custom_sql" init script or schema path
+        self.CUSTOM_SQL_INIT_DDL = os.getenv("CUSTOM_SQL_INIT_DDL", "schema.sql")
+
+        # Feature order configuration
+        self.FEATURE_ORDER = os.getenv("FEATURE_ORDER", 
+            "intent,sentiment,topic,entities,summarization,syntax_complexity,readability_score,key_phrase_extraction,temporal_features,length_of_prompt,conciseness"
+        ).split(",")
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/models.py
+--------------------------------------------------------------------------------
+
+"""
+Models and data structures for LangProfiler.
+"""
+
+import uuid
+import time
+
+def generate_agent_id():
+    """Generate a unique ID for an agent."""
+    return str(uuid.uuid4())
+
+class Agent:
+    def __init__(self, name, cost, domain_tags=None, **kwargs):
+        self.name = name
+        self.cost = cost
+        self.domain_tags = domain_tags or []
+
+class Interaction:
+    def __init__(self, agent_id, user_query, response, latency, feedback, timestamp=None, **kwargs):
+        self.agent_id = agent_id
+        self.user_query = user_query
+        self.response = response
+        self.latency = latency
+        self.feedback = feedback
+        self.timestamp = timestamp or time.time()
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/db/sqlite_db.py
+--------------------------------------------------------------------------------
+
+# sqlite_db.py
+
+import sqlite3
+from .base import DBBase
+import json
+
+class SqliteDB(DBBase):
+    def __init__(self, db_path: str):
+        self.conn = sqlite3.connect(db_path)
+        self._create_tables()
+
+    def _create_tables(self):
+        cursor = self.conn.cursor()
+        
+        # Create agents table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS agents (
+                agent_id TEXT PRIMARY KEY,
+                agent_info TEXT,
+                features TEXT,
+                length_of_prompt INTEGER,
+                conciseness REAL
+            );
+        """)
+        
+        # Create prompts table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS prompts (
+                prompt_id TEXT PRIMARY KEY,
+                prompt_info TEXT,
+                features TEXT,
+                length_of_prompt INTEGER,
+                conciseness REAL
+            );
+        """)
+        
+        # Create interactions table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS interactions (
+                interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                agent_id TEXT,
+                query TEXT,
+                response TEXT,
+                timestamp REAL,
+                latency REAL,
+                feedback REAL,
+                features TEXT,
+                length_of_prompt INTEGER,
+                conciseness REAL,
+                FOREIGN KEY(agent_id) REFERENCES agents(agent_id)
+            );
+        """)
+        
+        # Create prompt_interactions table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS prompt_interactions (
+                prompt_interaction_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                prompt_id TEXT,
+                query TEXT,
+                response TEXT,
+                timestamp REAL,
+                latency REAL,
+                feedback REAL,
+                features TEXT,
+                length_of_prompt INTEGER,
+                conciseness REAL,
+                FOREIGN KEY(prompt_id) REFERENCES prompts(prompt_id)
+            );
+        """)
+        
+        # Create profiles table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS profiles (
+                profile_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                agent_id TEXT,
+                profile_vec TEXT,
+                FOREIGN KEY(agent_id) REFERENCES agents(agent_id)
+            );
+        """)
+        
+        # Create prompt_profiles table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS prompt_profiles (
+                profile_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                prompt_id TEXT,
+                profile_vec TEXT,
+                FOREIGN KEY(prompt_id) REFERENCES prompts(prompt_id)
+            );
+        """)
+        
+        self.conn.commit()
+
+    # Implement other DBBase abstract methods here
+    # e.g., add_agent, get_agent, add_interaction, etc.
+
+    def add_agent(self, agent_id: str, agent_info: str, features: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO agents (agent_id, agent_info, features, length_of_prompt, conciseness)
+            VALUES (?, ?, ?, ?, ?)
+        """, (agent_id, agent_info, features, 0, 0.0))
+        self.conn.commit()
+
+    def get_agent(self, agent_id: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM agents WHERE agent_id = ?
+        """, (agent_id,))
+        return cursor.fetchone()
+
+    def add_interaction(self, interaction_data: dict):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO interactions (agent_id, query, response, timestamp, latency, feedback, features, length_of_prompt, conciseness)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            interaction_data["agent_id"],
+            interaction_data["query"],
+            interaction_data["response"],
+            interaction_data["timestamp"],
+            interaction_data["latency"],
+            interaction_data["feedback"],
+            interaction_data["features"],
+            interaction_data.get("length_of_prompt", 0),
+            interaction_data.get("conciseness", 0.0)
+        ))
+        self.conn.commit()
+
+    def list_interactions(self, agent_id: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM interactions WHERE agent_id = ?
+        """, (agent_id,))
+        return cursor.fetchall()
+
+    def update_profile(self, agent_id: str, profile_vec: List[float]):
+        cursor = self.conn.cursor()
+        profile_json = json.dumps(profile_vec)
+        cursor.execute("""
+            INSERT INTO profiles (agent_id, profile_vec)
+            VALUES (?, ?)
+            ON CONFLICT(agent_id) DO UPDATE SET profile_vec=excluded.profile_vec
+        """, (agent_id, profile_json))
+        self.conn.commit()
+
+    def get_profile(self, agent_id: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM profiles WHERE agent_id = ?
+        """, (agent_id,))
+        return cursor.fetchone()
+
+    def add_prompt(self, prompt_id: str, prompt_info: str, features: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO prompts (prompt_id, prompt_info, features, length_of_prompt, conciseness)
+            VALUES (?, ?, ?, ?, ?)
+        """, (prompt_id, prompt_info, features, 0, 0.0))
+        self.conn.commit()
+
+    def get_prompt(self, prompt_id: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM prompts WHERE prompt_id = ?
+        """, (prompt_id,))
+        return cursor.fetchone()
+
+    def add_prompt_interaction(self, interaction_data: dict):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO prompt_interactions (prompt_id, query, response, timestamp, latency, feedback, features, length_of_prompt, conciseness)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            interaction_data["prompt_id"],
+            interaction_data["query"],
+            interaction_data["response"],
+            interaction_data["timestamp"],
+            interaction_data["latency"],
+            interaction_data["feedback"],
+            interaction_data["features"],
+            interaction_data.get("length_of_prompt", 0),
+            interaction_data.get("conciseness", 0.0)
+        ))
+        self.conn.commit()
+
+    def list_prompt_interactions(self, prompt_id: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM prompt_interactions WHERE prompt_id = ?
+        """, (prompt_id,))
+        return cursor.fetchall()
+
+    def update_prompt_profile(self, prompt_id: str, profile_vec: List[float]):
+        cursor = self.conn.cursor()
+        profile_json = json.dumps(profile_vec)
+        cursor.execute("""
+            INSERT INTO prompt_profiles (prompt_id, profile_vec)
+            VALUES (?, ?)
+            ON CONFLICT(prompt_id) DO UPDATE SET profile_vec=excluded.profile_vec
+        """, (prompt_id, profile_json))
+        self.conn.commit()
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/db/postgresql_db.py
+--------------------------------------------------------------------------------
+
+import psycopg2
+from .base import DBBase
+import json
+
+# postgresql.py
+
+class PostgresQLConnector(DBBase):
+    def __init__(self, dsn: str, init_ddl: str = None):
+        self.conn = psycopg2.connect(dsn)
+        if init_ddl:
+            self._execute_init_ddl(init_ddl)
+        self._create_tables()
+
+    def _execute_init_ddl(self, ddl: str):
+        cursor = self.conn.cursor()
+        cursor.execute(ddl)
+        self.conn.commit()
+
+    def _create_tables(self):
+        cursor = self.conn.cursor()
+        
+        # Create agents table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS agents (
+                agent_id TEXT PRIMARY KEY,
+                agent_info JSONB,
+                features JSONB,
+                length_of_prompt INTEGER,
+                conciseness REAL
+            );
+        """)
+        
+        # Create prompts table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS prompts (
+                prompt_id TEXT PRIMARY KEY,
+                prompt_info JSONB,
+                features JSONB,
+                length_of_prompt INTEGER,
+                conciseness REAL
+            );
+        """)
+        
+        # Create interactions table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS interactions (
+                interaction_id SERIAL PRIMARY KEY,
+                agent_id TEXT REFERENCES agents(agent_id),
+                query TEXT,
+                response TEXT,
+                timestamp TIMESTAMP,
+                latency REAL,
+                feedback REAL,
+                features JSONB,
+                length_of_prompt INTEGER,
+                conciseness REAL
+            );
+        """)
+        
+        # Create prompt_interactions table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS prompt_interactions (
+                prompt_interaction_id SERIAL PRIMARY KEY,
+                prompt_id TEXT REFERENCES prompts(prompt_id),
+                query TEXT,
+                response TEXT,
+                timestamp TIMESTAMP,
+                latency REAL,
+                feedback REAL,
+                features JSONB,
+                length_of_prompt INTEGER,
+                conciseness REAL
+            );
+        """)
+        
+        # Create profiles table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS profiles (
+                profile_id SERIAL PRIMARY KEY,
+                agent_id TEXT REFERENCES agents(agent_id),
+                profile_vec JSONB
+            );
+        """)
+        
+        # Create prompt_profiles table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS prompt_profiles (
+                profile_id SERIAL PRIMARY KEY,
+                prompt_id TEXT REFERENCES prompts(prompt_id),
+                profile_vec JSONB
+            );
+        """)
+        
+        self.conn.commit()
+
+    # Implement other DBBase abstract methods here
+    # e.g., add_agent, get_agent, add_interaction, etc.
+
+    def add_agent(self, agent_id: str, agent_info: str, features: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO agents (agent_id, agent_info, features, length_of_prompt, conciseness)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (agent_id, agent_info, features, 0, 0.0))
+        self.conn.commit()
+
+    def get_agent(self, agent_id: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM agents WHERE agent_id = %s
+        """, (agent_id,))
+        return cursor.fetchone()
+
+    def add_interaction(self, interaction_data: dict):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO interactions (agent_id, query, response, timestamp, latency, feedback, features, length_of_prompt, conciseness)
+            VALUES (%s, %s, %s, to_timestamp(%s), %s, %s, %s, %s, %s)
+        """, (
+            interaction_data["agent_id"],
+            interaction_data["query"],
+            interaction_data["response"],
+            interaction_data["timestamp"],
+            interaction_data["latency"],
+            interaction_data["feedback"],
+            interaction_data["features"],
+            interaction_data.get("length_of_prompt", 0),
+            interaction_data.get("conciseness", 0.0)
+        ))
+        self.conn.commit()
+
+    def list_interactions(self, agent_id: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM interactions WHERE agent_id = %s
+        """, (agent_id,))
+        return cursor.fetchall()
+
+    def update_profile(self, agent_id: str, profile_vec: List[float]):
+        cursor = self.conn.cursor()
+        profile_json = json.dumps(profile_vec)
+        cursor.execute("""
+            INSERT INTO profiles (agent_id, profile_vec)
+            VALUES (%s, %s)
+            ON CONFLICT (agent_id) DO UPDATE SET profile_vec = EXCLUDED.profile_vec
+        """, (agent_id, profile_json))
+        self.conn.commit()
+
+    def get_profile(self, agent_id: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM profiles WHERE agent_id = %s
+        """, (agent_id,))
+        return cursor.fetchone()
+
+    def add_prompt(self, prompt_id: str, prompt_info: str, features: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO prompts (prompt_id, prompt_info, features, length_of_prompt, conciseness)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (prompt_id, prompt_info, features, 0, 0.0))
+        self.conn.commit()
+
+    def get_prompt(self, prompt_id: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM prompts WHERE prompt_id = %s
+        """, (prompt_id,))
+        return cursor.fetchone()
+
+    def add_prompt_interaction(self, interaction_data: dict):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO prompt_interactions (prompt_id, query, response, timestamp, latency, feedback, features, length_of_prompt, conciseness)
+            VALUES (%s, %s, %s, to_timestamp(%s), %s, %s, %s, %s, %s)
+        """, (
+            interaction_data["prompt_id"],
+            interaction_data["query"],
+            interaction_data["response"],
+            interaction_data["timestamp"],
+            interaction_data["latency"],
+            interaction_data["feedback"],
+            interaction_data["features"],
+            interaction_data.get("length_of_prompt", 0),
+            interaction_data.get("conciseness", 0.0)
+        ))
+        self.conn.commit()
+
+    def list_prompt_interactions(self, prompt_id: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            SELECT * FROM prompt_interactions WHERE prompt_id = %s
+        """, (prompt_id,))
+        return cursor.fetchall()
+
+    def update_prompt_profile(self, prompt_id: str, profile_vec: List[float]):
+        cursor = self.conn.cursor()
+        profile_json = json.dumps(profile_vec)
+        cursor.execute("""
+            INSERT INTO prompt_profiles (prompt_id, profile_vec)
+            VALUES (%s, %s)
+            ON CONFLICT (prompt_id) DO UPDATE SET profile_vec = EXCLUDED.profile_vec
+        """, (prompt_id, profile_json))
+        self.conn.commit()
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/db/mysql_db.py
+--------------------------------------------------------------------------------
+
+# custom_sql_mysql.py
+
+import mysql.connector
+from .base import DBBase
+import json
+
+class MySQLConnector(DBBase):
+    def __init__(self, dsn: str, init_ddl: str = None):
+        self.conn = mysql.connector.connect(dsn)
+        if init_ddl:
+            self._execute_init_ddl(init_ddl)
+        self._create_tables()
+
+    def _execute_init_ddl(self, ddl: str):
+        cursor = self.conn.cursor()
+        cursor.execute(ddl)
+        self.conn.commit()
+
+    def _create_tables(self):
+        cursor = self.conn.cursor()
+        
+        # Create agents table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS agents (
+                agent_id VARCHAR(255) PRIMARY KEY,
+                agent_info JSON,
+                features JSON,
+                length_of_prompt INT,
+                conciseness FLOAT
+            );
+        """)
+        
+        # Create prompts table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS prompts (
+                prompt_id VARCHAR(255) PRIMARY KEY,
+                prompt_info JSON,
+                features JSON,
+                length_of_prompt INT,
+                conciseness FLOAT
+            );
+        """)
+        
+        # Create interactions table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS interactions (
+                interaction_id INT AUTO_INCREMENT PRIMARY KEY,
+                agent_id VARCHAR(255),
+                query TEXT,
+                response TEXT,
+                timestamp DATETIME,
+                latency FLOAT,
+                feedback FLOAT,
+                features JSON,
+                length_of_prompt INT,
+                conciseness FLOAT,
+                FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
+            );
+        """)
+        
+        # Create prompt_interactions table without removed features
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS prompt_interactions (
+                prompt_interaction_id INT AUTO_INCREMENT PRIMARY KEY,
+                prompt_id VARCHAR(255),
+                query TEXT,
+                response TEXT,
+                timestamp DATETIME,
+                latency FLOAT,
+                feedback FLOAT,
+                features JSON,
+                length_of_prompt INT,
+                conciseness FLOAT,
+                FOREIGN KEY (prompt_id) REFERENCES prompts(prompt_id)
+            );
+        """)
+        
+        # Create profiles table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS profiles (
+                profile_id INT AUTO_INCREMENT PRIMARY KEY,
+                agent_id VARCHAR(255),
+                profile_vec JSON,
+                FOREIGN KEY (agent_id) REFERENCES agents(agent_id)
+            );
+        """)
+        
+        # Create prompt_profiles table
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS prompt_profiles (
+                profile_id INT AUTO_INCREMENT PRIMARY KEY,
+                prompt_id VARCHAR(255),
+                profile_vec JSON,
+                FOREIGN KEY (prompt_id) REFERENCES prompts(prompt_id)
+            );
+        """)
+        
+        self.conn.commit()
+
+    # Implement other DBBase abstract methods here
+    # e.g., add_agent, get_agent, add_interaction, etc.
+
+    def add_agent(self, agent_id: str, agent_info: str, features: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO agents (agent_id, agent_info, features, length_of_prompt, conciseness)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (agent_id, agent_info, features, 0, 0.0))
+        self.conn.commit()
+
+    def get_agent(self, agent_id: str):
+        cursor = self.conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT * FROM agents WHERE agent_id = %s
+        """, (agent_id,))
+        return cursor.fetchone()
+
+    def add_interaction(self, interaction_data: dict):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO interactions (agent_id, query, response, timestamp, latency, feedback, features, length_of_prompt, conciseness)
+            VALUES (%s, %s, %s, FROM_UNIXTIME(%s), %s, %s, %s, %s, %s)
+        """, (
+            interaction_data["agent_id"],
+            interaction_data["query"],
+            interaction_data["response"],
+            interaction_data["timestamp"],
+            interaction_data["latency"],
+            interaction_data["feedback"],
+            interaction_data["features"],
+            interaction_data.get("length_of_prompt", 0),
+            interaction_data.get("conciseness", 0.0)
+        ))
+        self.conn.commit()
+
+    def list_interactions(self, agent_id: str):
+        cursor = self.conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT * FROM interactions WHERE agent_id = %s
+        """, (agent_id,))
+        return cursor.fetchall()
+
+    def update_profile(self, agent_id: str, profile_vec: List[float]):
+        cursor = self.conn.cursor()
+        profile_json = json.dumps(profile_vec)
+        cursor.execute("""
+            INSERT INTO profiles (agent_id, profile_vec)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE profile_vec = VALUES(profile_vec)
+        """, (agent_id, profile_json))
+        self.conn.commit()
+
+    def get_profile(self, agent_id: str):
+        cursor = self.conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT * FROM profiles WHERE agent_id = %s
+        """, (agent_id,))
+        return cursor.fetchone()
+
+    def add_prompt(self, prompt_id: str, prompt_info: str, features: str):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO prompts (prompt_id, prompt_info, features, length_of_prompt, conciseness)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (prompt_id, prompt_info, features, 0, 0.0))
+        self.conn.commit()
+
+    def get_prompt(self, prompt_id: str):
+        cursor = self.conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT * FROM prompts WHERE prompt_id = %s
+        """, (prompt_id,))
+        return cursor.fetchone()
+
+    def add_prompt_interaction(self, interaction_data: dict):
+        cursor = self.conn.cursor()
+        cursor.execute("""
+            INSERT INTO prompt_interactions (prompt_id, query, response, timestamp, latency, feedback, features, length_of_prompt, conciseness)
+            VALUES (%s, %s, %s, FROM_UNIXTIME(%s), %s, %s, %s, %s, %s)
+        """, (
+            interaction_data["prompt_id"],
+            interaction_data["query"],
+            interaction_data["response"],
+            interaction_data["timestamp"],
+            interaction_data["latency"],
+            interaction_data["feedback"],
+            interaction_data["features"],
+            interaction_data.get("length_of_prompt", 0),
+            interaction_data.get("conciseness", 0.0)
+        ))
+        self.conn.commit()
+
+    def list_prompt_interactions(self, prompt_id: str):
+        cursor = self.conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT * FROM prompt_interactions WHERE prompt_id = %s
+        """, (prompt_id,))
+        return cursor.fetchall()
+
+    def update_prompt_profile(self, prompt_id: str, profile_vec: List[float]):
+        cursor = self.conn.cursor()
+        profile_json = json.dumps(profile_vec)
+        cursor.execute("""
+            INSERT INTO prompt_profiles (prompt_id, profile_vec)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE profile_vec = VALUES(profile_vec)
+        """, (prompt_id, profile_json))
+        self.conn.commit()
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/db/in_memory.py
+--------------------------------------------------------------------------------
+
+"""
+Database / Storage handling for LangProfiler.
+For the first version, we'll use an in-memory dict as a placeholder.
+Later, you can swap to a real DB (e.g., SQLite, PostgreSQL).
+"""
+
+from .base import DBBase
+
+class InMemoryDB(DBBase):
+    def __init__(self):
+        # Agents, interactions, and profiles stored in dictionaries
+        self.agents = {}         # agent_id -> agent_info dict
+        self.interactions = []   # list of interaction dicts
+        self.profiles = {}       # agent_id -> latest_profile_vec
+
+    def add_agent(self, agent_id, agent_info):
+        self.agents[agent_id] = agent_info
+
+    def get_agent(self, agent_id):
+        return self.agents.get(agent_id, None)
+
+    def add_interaction(self, interaction_data):
+        self.interactions.append(interaction_data)
+
+    def update_profile(self, agent_id, profile_vec):
+        self.profiles[agent_id] = profile_vec
+
+    def get_profile(self, agent_id):
+        return self.profiles.get(agent_id, None)
+
+    def list_interactions(self, agent_id):
+        # Return all interactions for a given agent
+        return [itx for itx in self.interactions if itx["agent_id"] == agent_id]
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/db/__init__.py
+--------------------------------------------------------------------------------
+
+
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/db/chroma_db.py
+--------------------------------------------------------------------------------
+
+# db/chroma_db.py
+from typing import List, Optional
+import json
+
+from .base import DBBase
+
+try:
+    import chromadb
+    from chromadb.config import Settings
+    from chromadb.utils import embedding_functions
+except ImportError as e:
+    raise ImportError(
+        "ChromaDB is not installed.\n"
+        "Please install it with: pip install chromadb\n"
+        f"Error: {e}"
+    )
+
+
+class ChromaDB(DBBase):
+    def __init__(self, persist_directory: str):
+        self.client = chromadb.Client()
+        self.collection = self._create_collection(persist_directory)
+
+    def _create_collection(self, persist_directory: str):
+        return self.client.create_collection(
+            name="langprofiler",
+            embedding_function=None,  # Define if using embedding functions
+            persist_directory=persist_directory
+        )
+
+    def add_agent(self, agent_id: str, agent_info: str, features: str):
+        # ChromaDB does not have tables, but you can store agent info as metadata
+        metadata = {
+            "agent_id": agent_id,
+            "agent_info": agent_info,
+            "features": features,
+            "length_of_prompt": 0,
+            "conciseness": 0.0
+        }
+        # Embedding can be a dummy vector or actual agent embedding
+        dummy_vector = [0.0] * 768  # Example vector length
+        self.collection.add(
+            documents=["Agent Info"],
+            embeddings=[dummy_vector],
+            metadatas=[metadata],
+            ids=[agent_id]
+        )
+
+    def get_agent(self, agent_id: str):
+        results = self.collection.get(ids=[agent_id], include=["metadatas"])
+        if results and results['metadatas']:
+            return results['metadatas'][0]
+        return None
+
+    def add_interaction(self, interaction_data: dict):
+        metadata = {
+            "agent_id": interaction_data["agent_id"],
+            "query": interaction_data["query"],
+            "response": interaction_data["response"],
+            "timestamp": interaction_data["timestamp"],
+            "latency": interaction_data["latency"],
+            "feedback": interaction_data["feedback"],
+            "features": interaction_data["features"],
+            "length_of_prompt": interaction_data.get("length_of_prompt", 0),
+            "conciseness": interaction_data.get("conciseness", 0.0)
+        }
+        dummy_vector = [0.0] * 768  # Example vector length
+        interaction_id = f"{interaction_data['agent_id']}_{interaction_data['timestamp']}"
+        self.collection.add(
+            documents=[interaction_data["query"]],
+            embeddings=[dummy_vector],
+            metadatas=[metadata],
+            ids=[interaction_id]
+        )
+
+    def list_interactions(self, agent_id: str):
+        # ChromaDB does not support direct querying by metadata fields.
+        # Implement filtering in application logic after retrieving all interactions.
+        results = self.collection.get(include=["metadatas"])
+        interactions = [
+            metadata for metadata in results['metadatas']
+            if metadata.get("agent_id") == agent_id
+        ]
+        return interactions
+
+    def update_profile(self, agent_id: str, profile_vec: List[float]):
+        # Store profile vector as metadata or manage separately
+        # Example: Update agent's metadata with profile vector
+        agent_metadata = self.get_agent(agent_id)
+        if agent_metadata:
+            agent_metadata['profile_vec'] = json.dumps(profile_vec)
+            self.collection.update(
+                ids=[agent_id],
+                metadatas=[agent_metadata]
+            )
+
+    def get_profile(self, agent_id: str):
+        agent_metadata = self.get_agent(agent_id)
+        if agent_metadata and 'profile_vec' in agent_metadata:
+            return {"profile_vec": json.loads(agent_metadata['profile_vec'])}
+        return None
+
+    def add_prompt(self, prompt_id: str, prompt_info: str, features: str):
+        metadata = {
+            "prompt_id": prompt_id,
+            "prompt_info": prompt_info,
+            "features": features,
+            "length_of_prompt": 0,
+            "conciseness": 0.0
+        }
+        dummy_vector = [0.0] * 768  # Example vector length
+        self.collection.add(
+            documents=["Prompt Info"],
+            embeddings=[dummy_vector],
+            metadatas=[metadata],
+            ids=[prompt_id]
+        )
+
+    def get_prompt(self, prompt_id: str):
+        results = self.collection.get(ids=[prompt_id], include=["metadatas"])
+        if results and results['metadatas']:
+            return results['metadatas'][0]
+        return None
+
+    def add_prompt_interaction(self, interaction_data: dict):
+        metadata = {
+            "prompt_id": interaction_data["prompt_id"],
+            "query": interaction_data["query"],
+            "response": interaction_data["response"],
+            "timestamp": interaction_data["timestamp"],
+            "latency": interaction_data["latency"],
+            "feedback": interaction_data["feedback"],
+            "features": interaction_data["features"],
+            "length_of_prompt": interaction_data.get("length_of_prompt", 0),
+            "conciseness": interaction_data.get("conciseness", 0.0)
+        }
+        dummy_vector = [0.0] * 768  # Example vector length
+        prompt_interaction_id = f"{interaction_data['prompt_id']}_{interaction_data['timestamp']}"
+        self.collection.add(
+            documents=[interaction_data["query"]],
+            embeddings=[dummy_vector],
+            metadatas=[metadata],
+            ids=[prompt_interaction_id]
+        )
+
+    def list_prompt_interactions(self, prompt_id: str):
+        results = self.collection.get(include=["metadatas"])
+        interactions = [
+            metadata for metadata in results['metadatas']
+            if metadata.get("prompt_id") == prompt_id
+        ]
+        return interactions
+
+    def update_prompt_profile(self, prompt_id: str, profile_vec: List[float]):
+        # Store prompt profile vector as metadata or manage separately
+        # Example: Update prompt's metadata with profile vector
+        prompt_metadata = self.get_prompt(prompt_id)
+        if prompt_metadata:
+            prompt_metadata['profile_vec'] = json.dumps(profile_vec)
+            self.collection.update(
+                ids=[prompt_id],
+                metadatas=[prompt_metadata]
+            )
+
+    def get_prompt_profile(self, prompt_id: str):
+        prompt_metadata = self.get_prompt(prompt_id)
+        if prompt_metadata and 'profile_vec' in prompt_metadata:
+            return {"profile_vec": json.loads(prompt_metadata['profile_vec'])}
+        return None
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/db/base.py
+--------------------------------------------------------------------------------
+
+# db/base.py
+from abc import ABC, abstractmethod
+from typing import Any, List, Optional
+
+class DBBase(ABC):
+    """
+    Abstract base class for database connectors that handle both Agents and Prompts.
+    """
+
+    # -----------------------
+    # AGENTS
+    # -----------------------
+    @abstractmethod
+    def add_agent(self, agent_id: str, agent_info: dict) -> None:
+        pass
+
+    @abstractmethod
+    def get_agent(self, agent_id: str) -> Optional[dict]:
+        pass
+
+    @abstractmethod
+    def add_interaction(self, interaction_data: dict) -> None:
+        pass
+
+    @abstractmethod
+    def list_interactions(self, agent_id: str) -> List[dict]:
+        pass
+
+    @abstractmethod
+    def update_profile(self, agent_id: str, profile_vec: List[float]) -> None:
+        pass
+
+    @abstractmethod
+    def get_profile(self, agent_id: str) -> Optional[List[float]]:
+        pass
+
+    # -----------------------
+    # PROMPTS
+    # -----------------------
+    @abstractmethod
+    def add_prompt(self, prompt_id: str, prompt_info: dict) -> None:
+        pass
+
+    @abstractmethod
+    def get_prompt(self, prompt_id: str) -> Optional[dict]:
+        pass
+
+    @abstractmethod
+    def add_prompt_interaction(self, interaction_data: dict) -> None:
+        pass
+
+    @abstractmethod
+    def list_prompt_interactions(self, prompt_id: str) -> List[dict]:
+        pass
+
+    @abstractmethod
+    def update_prompt_profile(self, prompt_id: str, profile_vec: List[float]) -> None:
+        pass
+
+    @abstractmethod
+    def get_prompt_profile(self, prompt_id: str) -> Optional[List[float]]:
+        pass
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/extract/__init__.py
+--------------------------------------------------------------------------------
+
+
+
+
+
+--------------------------------------------------------------------------------
+File: profiler/extract/features.py
+--------------------------------------------------------------------------------
+
+# feature_extractor.py
+
+from typing import List, Dict, Optional
+import spacy
+from transformers import pipeline
+from textblob import TextBlob
+from collections import Counter
+import re
+
+class FeatureExtractor:
+    """
+    Class responsible for extracting various linguistic and structural features from text.
+    """
+    def __init__(self, device: str = "cpu"):
+        """
+        Initializes the FeatureExtractor with necessary models and pipelines.
+        
+        :param device: The device to run models on ('cpu' or 'cuda').
+        """
+        self.nlp = spacy.load("en_core_web_sm")
+        self.sentiment_pipeline = pipeline("sentiment-analysis", device=0 if device == "cuda" else -1)
+        self.summarizer = pipeline("summarization", device=0 if device == "cuda" else -1)
+        # Add any other necessary initializations here
+
+    def extract_features(self, text: str, feature_types: List[str]) -> Dict[str, Optional[str]]:
+        """
+        Extracts specified features from the given text.
+        
+        :param text: The input text to extract features from.
+        :param feature_types: A list of feature names to extract.
+        :return: A dictionary mapping feature names to their extracted values.
+        """
+        extracted = {}
+        for feature in feature_types:
+            feature_lower = feature.lower()
+            if feature_lower == "intent":
+                extracted["intent"] = self._extract_intent(text)
+            elif feature_lower == "sentiment":
+                extracted["sentiment"] = self._extract_sentiment(text)
+            elif feature_lower == "topic":
+                extracted["topic"] = self._extract_topic([text])[0]
+            elif feature_lower == "entities":
+                extracted["entities"] = self._extract_entities(text)
+            elif feature_lower == "summarization":
+                extracted["summarization"] = self._extract_summarization(text)
+            elif feature_lower == "syntax_complexity":
+                extracted["syntax_complexity"] = self._extract_syntax_complexity(text)
+            elif feature_lower == "readability_score":
+                extracted["readability_score"] = self._extract_readability_score(text)
+            elif feature_lower == "key_phrase_extraction":
+                extracted["key_phrase_extraction"] = self._extract_key_phrases(text)
+            elif feature_lower == "temporal_features":
+                extracted["temporal_features"] = self._extract_temporal_features(text)
+            elif feature_lower == "length_of_prompt":
+                extracted["length_of_prompt"] = self._extract_length_of_prompt(text)
+            elif feature_lower == "conciseness":
+                extracted["conciseness"] = self._extract_conciseness(text)
+            else:
+                print(f"Unsupported feature type: {feature}")
+                extracted[feature_lower] = None
+        return extracted
+
+    def _extract_intent(self, text: str) -> Optional[str]:
+        """
+        Placeholder method for intent extraction.
+        Implement intent classification logic here.
+        """
+        # Example implementation using TextBlob's sentiment as a placeholder
+        # Replace with actual intent extraction logic or model
+        blob = TextBlob(text)
+        return blob.sentiment.subjectivity  # Placeholder value
+
+    def _extract_sentiment(self, text: str) -> Optional[str]:
+        """
+        Extracts sentiment from the text using a sentiment analysis pipeline.
+        """
+        try:
+            result = self.sentiment_pipeline(text)[0]
+            return result['label']  # e.g., 'POSITIVE', 'NEGATIVE', 'NEUTRAL'
+        except Exception as e:
+            print(f"Sentiment extraction error: {e}")
+            return None
+
+    def _extract_topic(self, texts: List[str]) -> List[Optional[str]]:
+        """
+        Extracts topic from the text. Placeholder for topic modeling.
+        Implement topic extraction logic here.
+        """
+        # Example implementation using simple keyword matching
+        topics = []
+        topic_keywords = {
+            "machine learning": ["machine learning", "ml", "artificial intelligence", "ai"],
+            "finance": ["finance", "investment", "retirement", "savings"],
+            "weather": ["weather", "forecast", "rain", "sunny"],
+            "entertainment": ["movie", "music", "entertainment", "concert"]
+            # Add more topics and keywords as needed
+        }
+        for text in texts:
+            text_lower = text.lower()
+            topic_found = "unknown"
+            for topic, keywords in topic_keywords.items():
+                if any(keyword in text_lower for keyword in keywords):
+                    topic_found = topic
+                    break
+            topics.append(topic_found)
+        return topics
+
+    def _extract_entities(self, text: str) -> List[Dict[str, str]]:
+        """
+        Extracts named entities from the text using spaCy.
+        """
+        doc = self.nlp(text)
+        entities = [{"text": ent.text, "label": ent.label_} for ent in doc.ents]
+        return entities
+
+    def _extract_summarization(self, text: str) -> Optional[str]:
+        """
+        Summarizes the text using a summarization pipeline.
+        """
+        try:
+            summary = self.summarizer(text, max_length=50, min_length=25, do_sample=False)
+            return summary[0]['summary_text']
+        except Exception as e:
+            print(f"Summarization error: {e}")
+            return None
+
+    def _extract_syntax_complexity(self, text: str) -> Optional[int]:
+        """
+        Measures the syntactic complexity of the text.
+        Example metric: average sentence length or parse tree depth.
+        """
+        doc = self.nlp(text)
+        if not doc.sents:
+            return 0
+        total_length = sum(len(sent) for sent in doc.sents)
+        avg_length = total_length / len(list(doc.sents))
+        return int(avg_length)  # Example: average sentence length
+
+    def _extract_readability_score(self, text: str) -> Optional[float]:
+        """
+        Calculates the readability score of the text using the Flesch-Kincaid formula.
+        """
+        try:
+            from textstat import flesch_kincaid_grade
+            score = flesch_kincaid_grade(text)
+            return score
+        except ImportError:
+            print("textstat library not installed. Install it using 'pip install textstat'")
+            return None
+        except Exception as e:
+            print(f"Readability score extraction error: {e}")
+            return None
+
+    def _extract_key_phrases(self, text: str) -> List[str]:
+        """
+        Extracts key phrases from the text. Placeholder for key phrase extraction.
+        Implement key phrase extraction logic here.
+        """
+        # Example implementation using RAKE (Rapid Automatic Keyword Extraction)
+        try:
+            from rake_nltk import Rake
+            r = Rake()
+            r.extract_keywords_from_text(text)
+            key_phrases = r.get_ranked_phrases()
+            return key_phrases[:5]  # Return top 5 key phrases
+        except ImportError:
+            print("rake_nltk library not installed. Install it using 'pip install rake-nltk'")
+            return []
+        except Exception as e:
+            print(f"Key phrase extraction error: {e}")
+            return []
+
+    def _extract_temporal_features(self, text: str) -> List[str]:
+        """
+        Extracts temporal expressions from the text.
+        """
+        # Example implementation using regex to find dates
+        date_patterns = [
+            r'\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b',  # e.g., 12/31/2020
+            r'\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.? \d{1,2}, \d{4}\b'  # e.g., January 1, 2020
+        ]
+        temporal_features = []
+        for pattern in date_patterns:
+            matches = re.findall(pattern, text, re.IGNORECASE)
+            temporal_features.extend(matches)
+        return temporal_features
+
+    def _extract_length_of_prompt(self, text: str) -> int:
+        """
+        Calculates the length of the prompt in words.
+        """
+        word_count = len(text.split())
+        return word_count
+
+    def _extract_conciseness(self, text: str) -> float:
+        """
+        Measures the conciseness of the prompt.
+        Returns a score between 0.0 (verbose) to 1.0 (concise).
+        """
+        total_words = len(text.split())
+        if total_words == 0:
+            return 1.0
+        # Simple heuristic: proportion of unique words
+        unique_words = len(set(text.split()))
+        conciseness_score = unique_words / total_words
+        return min(conciseness_score, 1.0)
+
+
+
+--------------------------------------------------------------------------------
+File: tests/__init__.py
+--------------------------------------------------------------------------------
+
+
+
+
