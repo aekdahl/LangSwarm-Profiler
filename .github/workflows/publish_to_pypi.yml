@@ -7,14 +7,13 @@ on:
 
 env:
   PYTHON_VERSION: "3.9"  # Workflow-wide variable
-  REPO_CHECK: 'aekdahl/LangSwarm-Profiler'
   
 jobs:
   test:
     runs-on: ubuntu-latest
 
     # Ensure secrets are only available for trusted contexts
-    if: "${{ github.event_name != 'pull_request' || github.repository == env.REPO_CHECK }}"
+    if: github.repository == 'aekdahl/LangSwarm-Profiler' || github.event_name != 'pull_request'
     
     steps:
       - name: Checkout code
@@ -35,11 +34,8 @@ jobs:
         run: pytest langswarm/tests/
         
   publish:
+    needs: test
     runs-on: ubuntu-latest
-
-    # Ensure secrets are only available for trusted contexts
-    if: "${{ github.event_name != 'pull_request' || github.repository == env.REPO_CHECK }}"
-    
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
