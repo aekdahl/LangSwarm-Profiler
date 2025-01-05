@@ -8,7 +8,10 @@ import json
 from .db.base import DBBase
 from .db.sqlite_db import SqliteDB
 from .db.chroma_db import ChromaDB
-from .db.custom_sql import CustomSQLConnector
+# from .db.custom_sql import CustomSQLConnector
+#
+# ToDo: Implement the other SQL DBs
+#
 from .aggregator import HybridAggregatorNN
 from .config import ProfilerConfig
 from .feature_extractor import FeatureExtractor
@@ -31,11 +34,11 @@ class LangProfiler:
             return SqliteDB(db_path=self.config.DB_DSN)
         elif backend == "chroma":
             return ChromaDB(persist_directory=self.config.CHROMA_PERSIST_DIR)
-        elif backend == "custom_sql":
-            return CustomSQLConnector(
-                dsn=self.config.DB_DSN,
-                init_ddl=self.config.CUSTOM_SQL_INIT_DDL
-            )
+        #elif backend == "custom_sql":
+        #    return CustomSQLConnector(
+        #        dsn=self.config.DB_DSN,
+        #        init_ddl=self.config.CUSTOM_SQL_INIT_DDL
+        #    )
         else:
             raise ValueError(f"Unknown DB backend: {backend}")
 
