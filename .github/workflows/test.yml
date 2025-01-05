@@ -1,0 +1,42 @@
+name: Run Tests
+
+on:
+  pull_request:  # Runs on every pull request
+    branches:
+      - main
+  push:
+    branches:
+      - main      # Runs on pushes to the main branch
+
+env:
+  OPENAI_API_KEY_TEST: ${{ secrets.OPENAI_API_KEY_TEST }}
+  REPO_CHECK: 'aekdahl/LangSwarm-Profiler'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Ensure secrets are only available for trusted contexts
+    if: github.event_name != 'pull_request' || github.repository == ${{ env.REPO_CHECK }}
+    
+    strategy:
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run tests
+        run: pytest langswarm/tests/
