@@ -1,0 +1,64 @@
+name: Publish to PyPI
+
+on:
+  push:
+    tags:
+      - 'v*' # Only trigger on version tags (e.g., v1.0.0)
+
+env:
+  PYTHON_VERSION: "3.9"  # Workflow-wide variable
+  REPO_CHECK: 'aekdahl/LangSwarm-Profiler'
+  
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    # Ensure secrets are only available for trusted contexts
+    if: github.event_name != 'pull_request' || github.repository == ${{ env.REPO_CHECK }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pytest
+
+      - name: Run tests
+        run: pytest langswarm/tests/
+        
+  publish:
+    runs-on: ubuntu-latest
+
+    # Ensure secrets are only available for trusted contexts
+    if: github.event_name != 'pull_request' || github.repository == ${{ env.REPO_CHECK }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install build twine
+
+    - name: Build package
+      run: python -m build
+
+    - name: Publish to PyPI
+      env:
+        TWINE_USERNAME: __token__
+        TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+      run: twine upload dist/*
