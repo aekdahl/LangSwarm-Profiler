@@ -1,4 +1,5 @@
 # custom_sql_mysql.py
+from typing import List
 
 import mysql.connector
 from .base import DBBase
