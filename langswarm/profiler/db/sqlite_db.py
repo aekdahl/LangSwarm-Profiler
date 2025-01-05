@@ -1,4 +1,5 @@
 # sqlite_db.py
+from typing import List
 
 import sqlite3
 from .base import DBBase
