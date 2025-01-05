@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
 
     # Ensure secrets are only available for trusted contexts
-    if: github.event_name != 'pull_request' || github.repository == ${{ env.REPO_CHECK }}
+    if: github.event_name != 'pull_request' || github.repository == env.REPO_CHECK
     
     strategy:
       matrix:
