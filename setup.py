@@ -7,7 +7,13 @@ with open("requirements.txt", "r") as f:
 setup(
     name="langswarm-profiler",
     version="0.0.1",
-    description="...",
+    description = (
+        "LangSwarm-Profiler is a Python library designed to analyze and profile large language model (LLM) agents. "
+        "It provides tools for managing agent interactions, extracting features, and generating profile embeddings. "
+        "The library is ideal for multi-agent systems, enabling informed decisions about agent selection, performance tracking, "
+        "and optimization. LangSwarm-Profiler integrates seamlessly within the ecosystem LangSwarm for "
+        "consensus, memory sharing, and reinforcement learning workflows."
+    ),
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
     url="https://github.com/aekdahl/langswarm-profiler",
